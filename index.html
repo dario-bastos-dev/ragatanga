@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rhythm Battle — MVP</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+
+<div id="game"></div>
+
+<div id="menuOverlay" class="overlay">
+  <div class="menuCard">
+
+    <div class="eyebrow">RHYTHM BATTLE</div>
+    <h1>ESCOLHA A MÚSICA</h1>
+
+    <div class="songGrid">
+      <button class="songCard active" type="button">
+        <span class="songBadge">DISPONÍVEL</span>
+        <strong>RAGATANGA</strong>
+        <small>Rouge · 1:32 → 2:22</small>
+      </button>
+
+      <button class="songCard locked" disabled type="button">
+        <span class="lock">🔒</span>
+        <strong>BILLIE JEAN</strong>
+        <small>Em desenvolvimento</small>
+      </button>
+
+      <button class="songCard locked" disabled type="button">
+        <span class="lock">🔒</span>
+        <strong>MACARENA</strong>
+        <small>Em desenvolvimento</small>
+      </button>
+
+      <button class="songCard locked" disabled type="button">
+        <span class="lock">🔒</span>
+        <strong>YMCA</strong>
+        <small>Em desenvolvimento</small>
+      </button>
+    </div>
+
+    <div class="sectionTitle">DIFICULDADE</div>
+
+    <div class="difficultyGrid">
+      <button class="difficultyCard" data-difficulty="easy" type="button">
+        <strong>FÁCIL</strong>
+        <span>Menos hits</span>
+        <small>Lento</small>
+      </button>
+
+      <button class="difficultyCard selected" data-difficulty="normal" type="button">
+        <strong>NORMAL</strong>
+        <span>Hits intermediários</span>
+        <small>Velocidade normal</small>
+      </button>
+
+      <button class="difficultyCard" data-difficulty="hard" type="button">
+        <strong>DIFÍCIL</strong>
+        <span>Todas as batidas</span>
+        <small>Rápido</small>
+      </button>
+
+      <button class="difficultyCard extremeCard" data-difficulty="extreme" type="button">
+        <strong>EXTREMO</strong>
+        <span>Todas as batidas + X</span>
+        <small>2× rápido</small>
+      </button>
+    </div>
+
+    <div id="difficultyInfo">
+      NORMAL · aproximadamente metade das batidas
+    </div>
+
+    <div class="sectionTitle">MODO DE JOGO</div>
+
+    <div class="modeGrid">
+      <button class="modeBtn p1" id="onePlayer" disabled type="button">
+        <strong>1 JOGADOR</strong>
+        <span>W · A · S · D</span>
+      </button>
+
+      <button class="modeBtn p2" id="twoPlayers" disabled type="button">
+        <strong>2 JOGADORES</strong>
+        <span>P1: W A S D · P2: SETAS</span>
+      </button>
+    </div>
+
+    <div id="menuStatus">Carregando personagem 3D…</div>
+
+  </div>
+</div>
+
+<div id="hud">
+
+  <div class="topHud">
+    <div class="playerHud blue">
+      <div class="smallLabel">P1</div>
+      <div class="score" id="scoreP1">000000</div>
+      <div class="combo" id="comboP1">COMBO x0</div>
+    </div>
+
+    <div id="centerProgress">
+      <div class="progressTop">
+        <span class="playerTag blueTag">P1</span>
+        <span id="progressPct">0%</span>
+        <span class="playerTag redTag" id="p2ProgressTag">P2</span>
+      </div>
+
+      <div class="progressTrack">
+        <div id="progressFill"></div>
+      </div>
+
+      <div class="progressEnds">
+        <span>1:32</span>
+        <span>2:22</span>
+      </div>
+
+      <div id="difficultyHud">NORMAL</div>
+    </div>
+
+    <div class="playerHud red" id="hudP2">
+      <div class="smallLabel">P2</div>
+      <div class="score" id="scoreP2">000000</div>
+      <div class="combo" id="comboP2">COMBO x0</div>
+    </div>
+  </div>
+
+  <section id="boardP1" class="rhythmBoard blueBoard">
+    <div class="boardTitle">P1 · W A S D</div>
+
+    <div class="lanes">
+      <div class="lane"></div>
+      <div class="lane"></div>
+      <div class="lane"></div>
+      <div class="lane"></div>
+
+      <div class="lane specialLane"></div>
+
+      <div class="notesLayer" id="notesP1"></div>
+
+      <div class="receptors">
+        <div class="receptor" data-player="p1" data-key="W">W</div>
+        <div class="receptor" data-player="p1" data-key="A">A</div>
+        <div class="receptor" data-player="p1" data-key="S">S</div>
+        <div class="receptor" data-player="p1" data-key="D">D</div>
+        <div class="specialReceptor" data-player="p1" data-key="X">X</div>
+      </div>
+    </div>
+
+    <div class="hint">Acerte quando a nota encaixar.</div>
+  </section>
+
+  <section id="boardP2" class="rhythmBoard redBoard">
+    <div class="boardTitle">P2 · SETAS</div>
+
+    <div class="lanes">
+      <div class="lane"></div>
+      <div class="lane"></div>
+      <div class="lane"></div>
+      <div class="lane"></div>
+
+      <div class="lane specialLane"></div>
+
+      <div class="notesLayer" id="notesP2"></div>
+
+      <div class="receptors">
+        <div class="receptor" data-player="p2" data-key="ArrowUp">↑</div>
+        <div class="receptor" data-player="p2" data-key="ArrowLeft">←</div>
+        <div class="receptor" data-player="p2" data-key="ArrowDown">↓</div>
+        <div class="receptor" data-player="p2" data-key="ArrowRight">→</div>
+        <div class="specialReceptor enterReceptor" data-player="p2" data-key="Enter">ENTER</div>
+      </div>
+    </div>
+
+    <div class="hint">Acerte quando a nota encaixar.</div>
+  </section>
+
+  <div id="judgeP1" class="judgement"></div>
+  <div id="judgeP2" class="judgement"></div>
+
+</div>
+
+<div id="countdown">3</div>
+
+<div id="resultOverlay" class="overlay hidden">
+  <div class="resultCard">
+
+    <div class="eyebrow">PARTIDA FINALIZADA</div>
+    <h1 id="resultTitle">RESULTADO</h1>
+
+    <div id="resultGrid" class="resultGrid"></div>
+
+    <button id="backMenu" type="button">
+      VOLTAR AO MENU
+    </button>
+
+  </div>
+</div>
+
+<audio
+  id="music"
+  preload="auto"
+  src="./assets/audio/ragatanga.mp3"
+></audio>
+
+<script type="module" src="/src/main.js"></script>
+
+</body>
+</html>
