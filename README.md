@@ -31,7 +31,7 @@ src/
 │   ├── stage.js         cena, câmera, luzes, chão, círculos, loop de render
 │   ├── character.js     personagem base (FBX), clones P1/P2
 │   └── dancers.js       coreografias por música e animação dos personagens
-├── dances/            formatos de coreografia (retarget do Mixamo, procedural)
+├── dances/            formato de coreografia (retarget do Mixamo)
 ├── gameplay/
 │   ├── chart.js         geração das notas a partir do beatmap
 │   ├── players.js       jogadores e suas notas na pista
@@ -138,7 +138,3 @@ node scripts/build-dance.mjs ymca     # só uma
 - As rotações são gravadas no espaço do mundo relativas à T-pose e reaplicadas no personagem do jogo (`src/dances/packed-clips.js`), porque os eixos locais dos ossos do rig do Mixamo padrão diferem dos do Samba Dancing.
 - No Thriller, a deriva do quadril é removida (as partes originais andam até 4 m) e o quadril fica a no máximo ~45 cm do centro do círculo.
 - Com idle, o personagem faz o idle enquanto o jogador erra e volta à coreografia (com fade) quando acerta.
-
-### Billie Jean (desativada)
-
-A coreografia procedural do Billie Jean continua em `src/dances/billie-jean.js`, mas saiu do menu (o áudio e o beatmap foram removidos).

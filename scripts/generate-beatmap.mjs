@@ -7,8 +7,8 @@
 // - duration:   duração da partida em segundos
 // - offset:     segundos entre audioStart e a primeira batida (ajuste fino de sincronia)
 //
-// Exemplo (Billie Jean):
-//   node scripts/generate-beatmap.mjs billie-jean "Billie Jean" 117 30 50 0
+// Exemplo (Thriller):
+//   node scripts/generate-beatmap.mjs thriller "Thriller" 118.143 97.7 50 0.158
 
 import { writeFileSync } from 'node:fs';
 
