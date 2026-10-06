@@ -4,8 +4,14 @@ const resultOverlay =
 /* Tela de fim de partida com o desempenho de cada jogador. */
 export function showResults(
   players,
-  mode
+  mode,
+  saveError = null
 ){
+
+  document
+    .querySelector('#resultStatus')
+    .textContent =
+      saveError || '';
 
   const grid =
     document.querySelector(

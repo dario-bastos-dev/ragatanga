@@ -48,6 +48,10 @@ import {
 } from './players.js';
 
 import {
+  recordMatch
+} from '../core/leaderboard.js';
+
+import {
   updatePlayerNotes
 } from './notes.js';
 
@@ -260,9 +264,46 @@ export function finish(){
 
   disableDancers();
 
+  let saveError = null;
+
+  try{
+
+    recordMatch({
+      songId: state.songId,
+      difficulty: state.difficulty,
+      mode: state.mode,
+      players: [
+        {
+          id: 'P1',
+          score: state.players.p1.score
+        },
+        ...(state.mode === 2
+          ? [
+              {
+                id: 'P2',
+                score: state.players.p2.score
+              }
+            ]
+          : [])
+      ]
+    });
+
+  }catch(error){
+
+    console.error(
+      'Não foi possível salvar a partida no ranking.',
+      error
+    );
+
+    saveError =
+      'Não foi possível salvar esta partida no ranking deste navegador.';
+
+  }
+
   showResults(
     state.players,
-    state.mode
+    state.mode,
+    saveError
   );
 
 }

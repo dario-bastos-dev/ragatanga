@@ -27,6 +27,10 @@ import {
 } from './ui/menu.js';
 
 import {
+  initLeaderboard
+} from './ui/leaderboard.js';
+
+import {
   initInput
 } from './gameplay/input.js';
 
@@ -39,6 +43,8 @@ import {
 initMenu({
   onStart: startMode
 });
+
+initLeaderboard();
 
 initStage(updateGame);
 

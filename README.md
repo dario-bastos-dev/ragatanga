@@ -24,6 +24,7 @@ src/
 │   └── gameplay.js      teclas, colunas, janelas de acerto, pontuação
 ├── core/
 │   ├── state.js         estado compartilhado da partida
+│   ├── leaderboard.js   persistência e ordenação das últimas partidas
 │   └── utils.js         utilitários puros (tempo, aleatório, batidas)
 ├── audio/
 │   └── music.js         <audio> e relógio da partida
@@ -42,11 +43,16 @@ src/
 ├── ui/
 │   ├── menu.js          escolha de música, dificuldade e modo
 │   ├── hud.js           placar, progresso, julgamentos, efeitos
-│   └── results.js       tela de resultado
+│   ├── results.js       tela de resultado
+│   └── leaderboard.js   tela do ranking
 └── beatmaps/          batidas de cada música (JSON)
 ```
 
 Para adicionar uma música: mp3 em `public/assets/audio/`, beatmap em `src/beatmaps/`, entrada em `src/config/songs.js` e um card com `data-song` no `index.html`.
+
+## Ranking
+
+O ranking mostra as 10 maiores pontuações individuais registradas nas últimas 10 partidas concluídas. Em partidas de 2 jogadores, P1 e P2 entram separadamente; os empates ficam ordenados pela partida mais recente. O histórico é salvo no `localStorage` deste navegador e não é compartilhado entre dispositivos ou jogadores.
 
 ## Principal correção desta versão
 

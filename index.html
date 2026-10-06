@@ -90,6 +90,10 @@
 
     <div id="menuStatus">Carregando personagem 3D…</div>
 
+    <button id="openLeaderboard" class="rankingOpenButton" type="button">
+      VER RANKING
+    </button>
+
   </div>
 </div>
 
@@ -193,11 +197,55 @@
 
     <div id="resultGrid" class="resultGrid"></div>
 
-    <button id="backMenu" type="button">
-      VOLTAR AO MENU
-    </button>
+    <p id="resultStatus" class="resultStatus" role="status"></p>
+
+    <div class="resultActions">
+      <button id="openLeaderboardFromResults" type="button">
+        VER RANKING
+      </button>
+
+      <button id="backMenu" type="button">
+        VOLTAR AO MENU
+      </button>
+    </div>
 
   </div>
+</div>
+
+<div id="leaderboardOverlay" class="overlay leaderboardOverlay hidden">
+  <section class="leaderboardCard" aria-labelledby="leaderboardTitle">
+    <div class="eyebrow">RHYTHM BATTLE</div>
+    <h1 id="leaderboardTitle">RANKING</h1>
+    <p class="leaderboardDescription">
+      Top 10 pontuações individuais nas últimas 10 partidas.
+      Partidas de 2 jogadores registram P1 e P2 separadamente.
+    </p>
+
+    <p id="leaderboardEmpty" class="leaderboardMessage hidden">
+      Ainda não há partidas registradas. Termine uma partida para entrar no ranking.
+    </p>
+    <p id="leaderboardError" class="leaderboardMessage error hidden" role="alert"></p>
+
+    <div class="leaderboardTableWrap">
+      <table class="leaderboardTable">
+        <thead>
+          <tr>
+            <th scope="col">POS.</th>
+            <th scope="col">JOGADOR</th>
+            <th scope="col">MÚSICA</th>
+            <th scope="col">DIFICULDADE</th>
+            <th scope="col">PONTOS</th>
+            <th scope="col">JOGADA EM</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboardRows"></tbody>
+      </table>
+    </div>
+
+    <button id="closeLeaderboard" class="rankingCloseButton" type="button">
+      VOLTAR
+    </button>
+  </section>
 </div>
 
 <audio
