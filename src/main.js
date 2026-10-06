@@ -23,7 +23,6 @@ import {
 
 import {
   initMenu,
-  setMenuStatus,
   updateMenuAvailability
 } from './ui/menu.js';
 
@@ -45,7 +44,7 @@ initStage(updateGame);
 
 loadCharacter(
   updateMenuAvailability,
-  () => setMenuStatus('Não foi possível carregar o P1.')
+  updateMenuAvailability
 );
 
 initInput();

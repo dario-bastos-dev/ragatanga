@@ -20,7 +20,8 @@ import {
 } from '../audio/music.js';
 
 import {
-  isCharacterLoaded
+  isCharacterLoaded,
+  hasCharacterError
 } from '../scene/character.js';
 
 import {
@@ -64,7 +65,7 @@ export function initMenu(
 
 }
 
-export function setMenuStatus(
+function setMenuStatus(
   text
 ){
 
@@ -255,7 +256,9 @@ export function updateMenuAvailability(){
   let status =
     'Carregando música…';
 
-  if(hasDanceError(state.songId)){
+  if(hasCharacterError()){
+    status = 'Não foi possível carregar o P1.';
+  }else if(hasDanceError(state.songId)){
     status = 'Não foi possível carregar a coreografia.';
   }else if(hasMusicError()){
     status = 'Áudio não encontrado: ' + currentSong().audio;

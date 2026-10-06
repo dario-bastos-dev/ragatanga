@@ -22,9 +22,17 @@ import {
 */
 export let baseModel = null;
 
+let characterError = false;
+
 export function isCharacterLoaded(){
 
   return baseModel !== null;
+
+}
+
+export function hasCharacterError(){
+
+  return characterError;
 
 }
 
@@ -55,6 +63,8 @@ export function loadCharacter(
         'Erro P1:',
         error
       );
+
+      characterError = true;
 
       onError();
 
