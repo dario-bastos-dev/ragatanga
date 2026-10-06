@@ -82,7 +82,8 @@ canvas{display:block}
   flex-direction:column;
   align-items:center;
   justify-content:center;
-  gap:5px
+  gap:5px;
+  cursor:pointer
 }
 
 .songCard strong{font-size:15px}

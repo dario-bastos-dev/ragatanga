@@ -17,28 +17,28 @@
     <h1>ESCOLHA A MÚSICA</h1>
 
     <div class="songGrid">
-      <button class="songCard active" type="button">
+      <button class="songCard active" data-song="ragatanga" type="button">
         <span class="songBadge">DISPONÍVEL</span>
         <strong>RAGATANGA</strong>
         <small>Rouge · 1:32 → 2:22</small>
       </button>
 
-      <button class="songCard locked" disabled type="button">
-        <span class="lock">🔒</span>
-        <strong>BILLIE JEAN</strong>
-        <small>Em desenvolvimento</small>
+      <button class="songCard" data-song="thriller" type="button">
+        <span class="songBadge">DISPONÍVEL</span>
+        <strong>THRILLER</strong>
+        <small>Michael Jackson · 1:37 → 2:27</small>
       </button>
 
-      <button class="songCard locked" disabled type="button">
-        <span class="lock">🔒</span>
+      <button class="songCard" data-song="macarena" type="button">
+        <span class="songBadge">DISPONÍVEL</span>
         <strong>MACARENA</strong>
-        <small>Em desenvolvimento</small>
+        <small>Los Del Rio · 0:41 → 1:31</small>
       </button>
 
-      <button class="songCard locked" disabled type="button">
-        <span class="lock">🔒</span>
+      <button class="songCard" data-song="ymca" type="button">
+        <span class="songBadge">DISPONÍVEL</span>
         <strong>YMCA</strong>
-        <small>Em desenvolvimento</small>
+        <small>Village People · 1:00 → 1:50</small>
       </button>
     </div>
 
@@ -79,12 +79,12 @@
     <div class="modeGrid">
       <button class="modeBtn p1" id="onePlayer" disabled type="button">
         <strong>1 JOGADOR</strong>
-        <span>W · A · S · D</span>
+        <span>A · W · S · D</span>
       </button>
 
       <button class="modeBtn p2" id="twoPlayers" disabled type="button">
         <strong>2 JOGADORES</strong>
-        <span>P1: W A S D · P2: SETAS</span>
+        <span>P1: A W S D · P2: SETAS</span>
       </button>
     </div>
 
@@ -114,8 +114,8 @@
       </div>
 
       <div class="progressEnds">
-        <span>1:32</span>
-        <span>2:22</span>
+        <span id="progressStart">1:32</span>
+        <span id="progressEnd">2:22</span>
       </div>
 
       <div id="difficultyHud">NORMAL</div>
@@ -129,7 +129,7 @@
   </div>
 
   <section id="boardP1" class="rhythmBoard blueBoard">
-    <div class="boardTitle">P1 · W A S D</div>
+    <div class="boardTitle">P1 · A W S D</div>
 
     <div class="lanes">
       <div class="lane"></div>
@@ -142,8 +142,8 @@
       <div class="notesLayer" id="notesP1"></div>
 
       <div class="receptors">
-        <div class="receptor" data-player="p1" data-key="W">W</div>
         <div class="receptor" data-player="p1" data-key="A">A</div>
+        <div class="receptor" data-player="p1" data-key="W">W</div>
         <div class="receptor" data-player="p1" data-key="S">S</div>
         <div class="receptor" data-player="p1" data-key="D">D</div>
         <div class="specialReceptor" data-player="p1" data-key="X">X</div>

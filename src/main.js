@@ -7,14 +7,28 @@ import {
 import * as SkeletonUtils
   from 'three/addons/utils/SkeletonUtils.js';
 
-import beatmap
+import ragatangaBeatmap
   from './beatmaps/ragatanga.json';
+
+import thrillerBeatmap
+  from './beatmaps/thriller.json';
+
+import ymcaBeatmap
+  from './beatmaps/ymca.json';
+
+import macarenaBeatmap
+  from './beatmaps/macarena.json';
+
+import {
+  loadPackedDance,
+  retargetPackedClips
+} from './dances/packed-clips.js';
 
 const P1_MODEL_URL =
   'https://threejs.org/examples/models/fbx/Samba%20Dancing.fbx';
 
 
-const P1_KEYS = ['W','A','S','D'];
+const P1_KEYS = ['A','W','S','D'];
 
 const P2_KEYS = [
   'ArrowUp',
@@ -27,9 +41,81 @@ const P2_LABELS = ['↑','←','↓','→'];
 
 const LANE_X = [12.5,37.5,62.5,87.5];
 
-const AUDIO_START = beatmap.audioStart;
-const AUDIO_END = beatmap.audioEnd;
-const GAME_DURATION = beatmap.duration;
+/*
+  Cada música traz seu beatmap, o arquivo de áudio e as sementes
+  que definem a coreografia (sequência de notas) de cada jogador.
+  A janela de áudio (audioStart/audioEnd) vem do próprio beatmap.
+
+  dance (opcional): arquivo com os clips "dance" e "idle" da coreografia
+  (gerado por scripts/build-dance.mjs). Sem ele, a música usa o clip
+  Samba Dancing do FBX.
+
+  danceBeats (opcional): o clip vira um loop de N batidas que segue as
+  batidas do beatmap (acelera e desacelera junto com a música). Sem ele,
+  o clip segue o relógio da partida.
+*/
+const SONGS = {
+  ragatanga: {
+    title: 'RAGATANGA',
+    audio: './assets/audio/ragatanga.mp3',
+    beatmap: ragatangaBeatmap,
+    seedP1: 104729,
+    seedP2: 130363
+  },
+
+  thriller: {
+    title: 'THRILLER',
+    audio: './assets/audio/thriller.mp3',
+    beatmap: thrillerBeatmap,
+    seedP1: 7919,
+    seedP2: 15485863,
+    dance: './assets/animations/thriller.json'
+  },
+
+  ymca: {
+    title: 'YMCA',
+    audio: './assets/audio/ymca.mp3',
+    beatmap: ymcaBeatmap,
+    seedP1: 27644437,
+    seedP2: 49979687,
+    dance: './assets/animations/ymca.json',
+    danceBeats: 10
+  },
+
+  /* Os 16 tempos da Macarena = 16 batidas (4 compassos). */
+  macarena: {
+    title: 'MACARENA',
+    audio: './assets/audio/macarena.mp3',
+    beatmap: macarenaBeatmap,
+    seedP1: 86028121,
+    seedP2: 32452843,
+    dance: './assets/animations/macarena.json',
+    danceBeats: 16
+  }
+};
+
+let selectedSong = 'ragatanga';
+
+/*
+  Coreografias: danceFiles[id] é o arquivo carregado;
+  danceClips[id] = { dance, idle } já aplicados ao personagem.
+*/
+const danceFiles = {};
+const danceClips = {};
+const danceLoading = new Set();
+const danceErrors = new Set();
+
+let musicError = false;
+
+/* Tempo de fade entre idle e coreografia ao errar/acertar. */
+const DANCE_FADE = .25;
+
+let lastAnimationAt = 0;
+
+let beatmap = SONGS[selectedSong].beatmap;
+let AUDIO_START = beatmap.audioStart;
+let AUDIO_END = beatmap.audioEnd;
+let GAME_DURATION = beatmap.duration;
 
 const NORMAL_TARGET_Y = 82;
 const SPAWN_Y = -12;
@@ -125,8 +211,171 @@ const resultOverlay =
 const countdown =
   document.querySelector('#countdown');
 
+initSongMenu();
 initDifficultyMenu();
 init3D();
+
+function formatTime(seconds){
+
+  const minutes =
+    Math.floor(seconds / 60);
+
+  const rest =
+    Math.floor(seconds % 60);
+
+  return minutes + ':' +
+    String(rest).padStart(2, '0');
+
+}
+
+function initSongMenu(){
+
+  document
+    .querySelectorAll('.songCard')
+    .forEach(
+      button => {
+
+        button.addEventListener(
+          'click',
+          () => selectSong(
+            button.dataset.song
+          )
+        );
+
+      }
+    );
+
+  music.addEventListener(
+    'error',
+    () => {
+
+      musicError = true;
+
+      document
+        .querySelector('#onePlayer')
+        .disabled = true;
+
+      document
+        .querySelector('#twoPlayers')
+        .disabled = true;
+
+      document
+        .querySelector('#menuStatus')
+        .textContent =
+          'Áudio não encontrado: ' +
+          SONGS[selectedSong].audio;
+
+    }
+  );
+
+  music.addEventListener(
+    'loadeddata',
+    updateMenuAvailability
+  );
+
+  /* Garante o fim da partida se o áudio acabar antes da janela. */
+  music.addEventListener(
+    'ended',
+    finish
+  );
+
+  selectSong(selectedSong);
+
+}
+
+function selectSong(id){
+
+  const song =
+    SONGS[id];
+
+  if(!song){
+    return;
+  }
+
+  selectedSong = id;
+
+  beatmap = song.beatmap;
+  AUDIO_START = beatmap.audioStart;
+  AUDIO_END = beatmap.audioEnd;
+  GAME_DURATION = beatmap.duration;
+
+  document
+    .querySelectorAll('.songCard')
+    .forEach(
+      item =>
+        item.classList.toggle(
+          'active',
+          item.dataset.song === id
+        )
+    );
+
+  document
+    .querySelector('#progressStart')
+    .textContent =
+      formatTime(AUDIO_START);
+
+  document
+    .querySelector('#progressEnd')
+    .textContent =
+      formatTime(AUDIO_END);
+
+  musicError = false;
+
+  music.src =
+    song.audio;
+
+  music.load();
+
+  loadSongDance(id);
+
+  updateDifficultyInfo();
+  updateMenuAvailability();
+
+}
+
+function loadSongDance(id){
+
+  const song =
+    SONGS[id];
+
+  if(
+    !song.dance ||
+    danceFiles[id] ||
+    danceLoading.has(id)
+  ){
+    return;
+  }
+
+  danceLoading.add(id);
+
+  loadPackedDance(song.dance)
+    .then(
+      file => {
+        danceFiles[id] = file;
+      }
+    )
+    .catch(
+      error => {
+
+        console.error(
+          'Erro na coreografia:',
+          error
+        );
+
+        danceErrors.add(id);
+
+      }
+    )
+    .finally(
+      () => {
+
+        danceLoading.delete(id);
+        updateMenuAvailability();
+
+      }
+    );
+
+}
 
 function initDifficultyMenu(){
 
@@ -414,10 +663,19 @@ function updateMenuAvailability(){
     Assim que o Samba Dancing carregar,
     os dois modos ficam disponíveis.
   */
-  one.disabled = !p1Loaded;
-  two.disabled = !p1Loaded;
+  const danceReady =
+    !SONGS[selectedSong].dance ||
+    Boolean(danceFiles[selectedSong]);
 
-  if(p1Loaded){
+  const ready =
+    p1Loaded &&
+    music.readyState >= 2 &&
+    danceReady;
+
+  one.disabled = !ready;
+  two.disabled = !ready;
+
+  if(ready){
 
     document
       .querySelector('#menuStatus')
@@ -426,10 +684,23 @@ function updateMenuAvailability(){
 
   }else{
 
+    let status =
+      'Carregando música…';
+
+    if(danceErrors.has(selectedSong)){
+      status = 'Não foi possível carregar a coreografia.';
+    }else if(musicError){
+      status = 'Áudio não encontrado: ' + SONGS[selectedSong].audio;
+    }else if(!p1Loaded){
+      status = 'Carregando personagem 3D…';
+    }else if(!danceReady){
+      status = 'Carregando coreografia…';
+    }
+
     document
       .querySelector('#menuStatus')
       .textContent =
-        'Carregando personagem 3D…';
+        status;
 
   }
 
@@ -495,6 +766,87 @@ function placeModel(
 
 }
 
+function getDanceClips(){
+
+  const file =
+    danceFiles[selectedSong];
+
+  if(!file){
+
+    return {
+      dance: baseModel.animations[0],
+      idle: null
+    };
+
+  }
+
+  danceClips[selectedSong] ??=
+    retargetPackedClips(
+      file,
+      baseModel
+    );
+
+  return danceClips[selectedSong];
+
+}
+
+/*
+  Cria o mixer do personagem com a coreografia da música.
+  Com clip de idle, o personagem fica no idle enquanto o jogador erra
+  e volta para a coreografia (com fade) quando acerta.
+*/
+function attachDance(
+  object
+){
+
+  const {
+    dance,
+    idle
+  } =
+    getDanceClips();
+
+  const mixer =
+    new THREE.AnimationMixer(
+      object
+    );
+
+  const action =
+    mixer.clipAction(
+      dance
+    );
+
+  action.play();
+
+  let idleAction = null;
+
+  if(idle){
+
+    idleAction =
+      mixer.clipAction(
+        idle
+      );
+
+    idleAction.play();
+
+    action.setEffectiveWeight(0);
+
+  }
+
+  mixer.setTime(0);
+
+  return {
+    type: 'native',
+    object,
+    mixer,
+    clip: dance,
+    action,
+    idleAction,
+    blend: 0,
+    enabled: false
+  };
+
+}
+
 function createP1(
   x
 ){
@@ -525,30 +877,8 @@ function createP1(
 
   scene.add(object);
 
-  const mixer =
-    new THREE.AnimationMixer(
-      object
-    );
-
-  const clip =
-    baseModel.animations[0];
-
-  const action =
-    mixer.clipAction(
-      clip
-    );
-
-  action.play();
-
-  mixer.setTime(0);
-
-  dancers.p1 = {
-    type: 'native',
-    object,
-    mixer,
-    clip,
-    enabled: false
-  };
+  dancers.p1 =
+    attachDance(object);
 
 }
 
@@ -560,7 +890,7 @@ function createP1(
   O P2 usa:
   - mesmo FBX
   - mesmo Skeleton
-  - mesmo Samba Dancing clip
+  - mesma coreografia
   - mesma escala
   - mesma postura
 
@@ -661,30 +991,8 @@ function createP2(
 
   scene.add(object);
 
-  const mixer =
-    new THREE.AnimationMixer(
-      object
-    );
-
-  const clip =
-    baseModel.animations[0];
-
-  const action =
-    mixer.clipAction(
-      clip
-    );
-
-  action.play();
-
-  mixer.setTime(0);
-
-  dancers.p2 = {
-    type: 'native',
-    object,
-    mixer,
-    clip,
-    enabled: false
-  };
+  dancers.p2 =
+    attachDance(object);
 
 }
 function positiveModulo(
@@ -770,10 +1078,10 @@ function buildDifficultyEvents(){
   }
 
   const randomP1 =
-    seededRandom(104729);
+    seededRandom(SONGS[selectedSong].seedP1);
 
   const randomP2 =
-    seededRandom(130363);
+    seededRandom(SONGS[selectedSong].seedP2);
 
   let previousP1 = -1;
   let previousP2 = -1;
@@ -2177,49 +2485,165 @@ function updateAnimation(){
     return;
   }
 
+  const now =
+    performance.now();
+
+  const delta =
+    lastAnimationAt
+      ? (now - lastAnimationAt) / 1000
+      : 0;
+
+  lastAnimationAt = now;
+
   const t =
     gameTime();
 
-  const p1 =
-    dancers.p1;
+  animateDancer(
+    dancers.p1,
+    t,
+    delta
+  );
 
-  if(
-    p1?.enabled
-  ){
+  if(mode === 2){
 
-    const animationTime =
-      positiveModulo(
-        t,
-        p1.clip.duration
-      );
-
-    p1.mixer
-      .setTime(
-        animationTime
-      );
+    animateDancer(
+      dancers.p2,
+      t,
+      delta
+    );
 
   }
 
-  const p2 =
-    dancers.p2;
+}
 
-  if(
-    mode === 2 &&
-    p2?.enabled
-  ){
+/*
+  Posição da animação no instante t da partida. Com danceBeats, o loop
+  avança por batidas do beatmap em vez de segundos.
+*/
+function danceTime(
+  t,
+  duration
+){
 
-    const animationTime =
-      positiveModulo(
-        t,
-        p2.clip.duration
-      );
+  const loopBeats =
+    SONGS[selectedSong].danceBeats;
 
-    p2.mixer
-      .setTime(
-        animationTime
-      );
+  if(!loopBeats){
+
+    return positiveModulo(
+      t,
+      duration
+    );
 
   }
+
+  return positiveModulo(
+    beatPosition(t),
+    loopBeats
+  ) /
+  loopBeats *
+  duration;
+
+}
+
+/*
+  Índice fracionário da batida no instante t (0 = primeira batida),
+  interpolando entre as batidas do beatmap e extrapolando nas pontas.
+*/
+function beatPosition(
+  t
+){
+
+  const beats =
+    beatmap.beats;
+
+  const last =
+    beats.length - 1;
+
+  if(t <= beats[0]){
+
+    return (t - beats[0]) /
+      (beats[1] - beats[0]);
+
+  }
+
+  if(t >= beats[last]){
+
+    return last +
+      (t - beats[last]) /
+      (beats[last] - beats[last - 1]);
+
+  }
+
+  let low = 0;
+  let high = last;
+
+  while(high - low > 1){
+
+    const middle =
+      (low + high) >> 1;
+
+    if(beats[middle] <= t){
+      low = middle;
+    }else{
+      high = middle;
+    }
+
+  }
+
+  return low +
+    (t - beats[low]) /
+    (beats[high] - beats[low]);
+
+}
+
+function animateDancer(
+  dancer,
+  t,
+  delta
+){
+
+  if(!dancer){
+    return;
+  }
+
+  const animationTime =
+    danceTime(
+      t,
+      dancer.clip.duration
+    );
+
+  /*
+    Sem idle: o personagem congela enquanto o jogador erra.
+  */
+  if(!dancer.idleAction){
+
+    if(dancer.enabled){
+      dancer.mixer.setTime(animationTime);
+    }
+
+    return;
+
+  }
+
+  dancer.blend =
+    THREE.MathUtils.clamp(
+      dancer.blend +
+        (dancer.enabled ? delta : -delta) /
+        DANCE_FADE,
+      0,
+      1
+    );
+
+  dancer.action.setEffectiveWeight(
+    dancer.blend
+  );
+
+  dancer.idleAction.setEffectiveWeight(
+    1 - dancer.blend
+  );
+
+  dancer.mixer.setTime(animationTime);
 
 }
 

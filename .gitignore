@@ -1,3 +1,6 @@
 node_modules/
 dist/
 .vite/
+
+# FBX originais do Mixamo (não redistribuir); o jogo usa public/assets/animations/thriller.json
+assets-src/
