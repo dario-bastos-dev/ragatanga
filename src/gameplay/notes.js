@@ -5,8 +5,8 @@ import {
 } from '../config/gameplay.js';
 
 import {
-  state,
-  currentDifficulty
+  currentDifficulty,
+  hasSpecialLane
 } from '../core/state.js';
 
 import {
@@ -156,10 +156,7 @@ export function updatePlayerNotes(
     allowMisses
   );
 
-  if(
-    state.difficulty ===
-    'extreme'
-  ){
+  if(hasSpecialLane()){
 
     updateCollection(
       player,

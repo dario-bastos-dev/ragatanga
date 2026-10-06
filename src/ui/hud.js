@@ -1,6 +1,7 @@
 import {
   state,
-  currentDifficulty
+  currentDifficulty,
+  hasSpecialLane
 } from '../core/state.js';
 
 /*
@@ -31,7 +32,7 @@ export function showMatchHud(){
   document.body
     .classList.toggle(
       'extreme',
-      state.difficulty === 'extreme'
+      hasSpecialLane()
     );
 
   document

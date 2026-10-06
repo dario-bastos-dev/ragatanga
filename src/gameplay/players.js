@@ -7,8 +7,7 @@ import {
 } from '../config/gameplay.js';
 
 import {
-  state,
-  currentDifficulty
+  hasSpecialLane
 } from '../core/state.js';
 
 /*
@@ -55,7 +54,7 @@ export function makePlayer(
 
         element.style.left =
           (
-            state.difficulty === 'extreme'
+            hasSpecialLane()
               ? EXTREME_LANE_X[lane]
               : LANE_X[lane]
           ) + '%';
@@ -80,7 +79,7 @@ export function makePlayer(
 
   const specials = [];
 
-  if(currentDifficulty().special){
+  if(hasSpecialLane()){
 
     for(
       const event

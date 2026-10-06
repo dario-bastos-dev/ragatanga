@@ -44,3 +44,13 @@ export function currentDifficulty(){
   return DIFFICULTIES[state.difficulty];
 
 }
+
+/*
+  Dificuldade com a 5ª pista (especiais X / Enter).
+  É a flag `special` da dificuldade que decide, não o nome.
+*/
+export function hasSpecialLane(){
+
+  return currentDifficulty().special;
+
+}

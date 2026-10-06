@@ -4,7 +4,8 @@ import {
 } from '../config/gameplay.js';
 
 import {
-  state
+  state,
+  hasSpecialLane
 } from '../core/state.js';
 
 import {
@@ -35,9 +36,7 @@ export function initInput(){
       const upper =
         event.key.toUpperCase();
 
-      if(
-        state.difficulty === 'extreme'
-      ){
+      if(hasSpecialLane()){
 
         if(
           upper === 'X'
