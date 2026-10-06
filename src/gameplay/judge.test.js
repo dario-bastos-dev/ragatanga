@@ -165,3 +165,56 @@ describe('nota que passou sem ser tocada', () => {
   });
 
 });
+
+describe('especiais do P2 (tecla Enter)', () => {
+
+  let p2;
+
+  beforeEach(async () => {
+
+    const { state } = await import('../core/state.js');
+
+    state.difficulty = 'extreme';
+
+    /* P2 com um especial (Enter) aos 10 s. */
+    p2 = makePlayer(
+      'p2',
+      ['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'],
+      'notesP2',
+      {
+        regular: [],
+        special: [{ time: 10, order: 0 }]
+      }
+    );
+
+    state.difficulty = 'normal';
+
+  });
+
+  function p2JudgementText(){
+    return document.querySelector('#judgeP2').textContent;
+  }
+
+  it('mostra ENTER SPECIAL no acerto', () => {
+    now = 10;
+
+    judge.handleSpecialInput(p2, 'Enter');
+
+    expect(p2JudgementText()).toBe('ENTER SPECIAL +150');
+  });
+
+  it('mostra MISS ENTER quando o Enter vem fora da janela de acerto', () => {
+    now = 9.6;
+
+    judge.handleSpecialInput(p2, 'Enter');
+
+    expect(p2JudgementText()).toBe('MISS ENTER -50');
+  });
+
+  it('mostra MISS ENTER quando o especial passa sem ser tocado', () => {
+    judge.resolvePassedNote(p2, p2.specials[0]);
+
+    expect(p2JudgementText()).toBe('MISS ENTER -50');
+  });
+
+});

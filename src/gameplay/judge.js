@@ -25,6 +25,18 @@ import {
   Julgamento: transforma teclas em PERFECT/GREAT/GOOD/MISS,
   atualiza placar e combo e liga/desliga a dança do personagem.
 */
+
+/* Nome da tecla do especial na tela: X (P1) ou ENTER (P2). */
+function specialLabel(
+  key
+){
+
+  return key === 'Enter'
+    ? 'ENTER'
+    : 'X';
+
+}
+
 export function handleInput(
   player,
   key
@@ -98,9 +110,7 @@ export function handleSpecialInput(
 
     registerInputMiss(
       player,
-      key === 'Enter'
-        ? 'MISS ENTER'
-        : 'MISS X'
+      'MISS ' + specialLabel(key)
     );
 
     return;
@@ -235,7 +245,7 @@ function judgeCandidate(
   registerInputMiss(
     player,
     special
-      ? 'MISS X'
+      ? 'MISS ' + specialLabel(note.key)
       : (
           signed < 0
             ? 'MISS • CEDO'
@@ -333,7 +343,8 @@ function resolveSpecialHit(
 
   showJudgement(
     player.id,
-    'X SPECIAL +' +
+    specialLabel(note.key) +
+      ' SPECIAL +' +
       SPECIAL_SCORE,
     false
   );
@@ -409,9 +420,13 @@ export function resolvePassedNote(
 
   showJudgement(
     player.id,
-    note.type === 'special'
-      ? 'MISS X -50'
-      : 'MISS -50',
+    (
+      note.type === 'special'
+        ? 'MISS ' + specialLabel(note.key)
+        : 'MISS'
+    ) +
+      ' -' +
+      MISS_PENALTY,
     true
   );
 
