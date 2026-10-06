@@ -7,6 +7,47 @@ npm install
 npm run dev
 ```
 
+## Estrutura do código
+
+Módulos ES organizados por domínio, em camadas, sem dependências circulares. As importações seguem uma única direção:
+
+`config` ← `core` ← `audio` ← `dances` ← `scene` ← `ui` ← `gameplay` ← `main.js`
+
+Cada pasta só importa das que estão à esquerda dela (por exemplo, `gameplay/` usa o HUD de `ui/`, mas `ui/` nunca importa `gameplay/`). O `main.js` conecta tudo, inclusive os avisos de baixo para cima (personagem carregado → menu, quadro do palco → partida), feitos com callbacks.
+
+```text
+src/
+├── main.js            ponto de entrada: inicializa e conecta os módulos
+├── config/            dados estáticos
+│   ├── songs.js         músicas (áudio, beatmap, coreografia, sementes)
+│   ├── difficulties.js  dificuldades (densidade e velocidade das notas)
+│   └── gameplay.js      teclas, colunas, janelas de acerto, pontuação
+├── core/
+│   ├── state.js         estado compartilhado da partida
+│   └── utils.js         utilitários puros (tempo, aleatório, batidas)
+├── audio/
+│   └── music.js         <audio> e relógio da partida
+├── scene/             Three.js
+│   ├── stage.js         cena, câmera, luzes, chão, círculos, loop de render
+│   ├── character.js     personagem base (FBX), clones P1/P2
+│   └── dancers.js       coreografias por música e animação dos personagens
+├── dances/            formatos de coreografia (retarget do Mixamo, procedural)
+├── gameplay/
+│   ├── chart.js         geração das notas a partir do beatmap
+│   ├── players.js       jogadores e suas notas na pista
+│   ├── judge.js         julgamento, placar e combo
+│   ├── notes.js         rolagem das notas e MISS automático
+│   ├── input.js         teclado
+│   └── session.js       ciclo da partida: contagem, jogo, fim
+├── ui/
+│   ├── menu.js          escolha de música, dificuldade e modo
+│   ├── hud.js           placar, progresso, julgamentos, efeitos
+│   └── results.js       tela de resultado
+└── beatmaps/          batidas de cada música (JSON)
+```
+
+Para adicionar uma música: mp3 em `public/assets/audio/`, beatmap em `src/beatmaps/`, entrada em `src/config/songs.js` e um card com `data-song` no `index.html`.
+
 ## Principal correção desta versão
 
 O P2 vermelho não usa mais `mixamo.fbx`.
@@ -56,7 +97,7 @@ O quinto receptor fica na mesma linha dos demais.
 
 ## Músicas
 
-Cada música tem um beatmap em `src/beatmaps/<id>.json`, um mp3 em `public/assets/audio/<id>.mp3` e uma entrada em `SONGS` no `src/main.js` (sementes `seedP1`/`seedP2` definem a coreografia de notas de cada jogador).
+Cada música tem um beatmap em `src/beatmaps/<id>.json`, um mp3 em `public/assets/audio/<id>.mp3` e uma entrada em `SONGS` no `src/config/songs.js` (sementes `seedP1`/`seedP2` definem a coreografia de notas de cada jogador).
 
 | Música | Arquivo de áudio | BPM | Janela | Dança |
 | --- | --- | --- | --- | --- |
