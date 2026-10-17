@@ -1,80 +1,192 @@
-import {
-  P1_KEYS,
-  P2_KEYS
-} from '../config/gameplay.js';
+import '../core/state.js';
 
-import {
-  state,
-  currentDifficulty
-} from '../core/state.js';
+function pauseGame(){
 
-import {
-  wait
-} from '../core/utils.js';
+  if(
+    gamePaused ||
+    (!running && !preRolling)
+  ){
+    return;
+  }
 
-import {
-  music,
-  gameTime,
-  currentPreviewTime
-} from '../audio/music.js';
+  gamePaused = true;
 
-import {
-  layoutRings
-} from '../scene/stage.js';
+  if(preRolling){
+    preRollElapsedAtPause =
+      (
+        performance.now() -
+        preRollStartedAt
+      ) /
+      1000;
+  }
 
-import {
-  spawnDancers,
-  disableDancers,
-  updateDancers
-} from '../scene/dancers.js';
+  if(!music.paused){
+    music.pause();
+  }
 
-import {
-  showMatchHud,
-  showCountdown,
-  hideCountdown,
-  updateProgress
-} from '../ui/hud.js';
+  document.body
+    .classList.add(
+      'game-paused'
+    );
 
-import {
-  showResults
-} from '../ui/results.js';
+  pauseOverlay
+    .classList.remove(
+      'hidden'
+    );
 
-import {
-  buildDifficultyEvents
-} from './chart.js';
+  continueGameButton.focus();
 
-import {
-  makePlayer
-} from './players.js';
+}
 
-import {
-  recordMatch
-} from '../core/leaderboard.js';
+async function resumeGame(){
 
-import {
-  updatePlayerNotes
-} from './notes.js';
+  if(!gamePaused){
+    return;
+  }
 
-/*
-  Ciclo da partida: preparação → contagem → jogo → resultado.
-*/
-export async function startMode(
+  if(preRolling){
+
+    preRollStartedAt =
+      performance.now() -
+      preRollElapsedAtPause * 1000;
+
+    preMatchLastAt =
+      performance.now();
+
+  }
+
+  gamePaused = false;
+
+  document.body
+    .classList.remove(
+      'game-paused'
+    );
+
+  pauseOverlay
+    .classList.add(
+      'hidden'
+    );
+
+  if(
+    running &&
+    music.currentTime < AUDIO_END
+  ){
+
+    try{
+      await music.play();
+    }catch(error){
+      console.warn(
+        'Não foi possível retomar o áudio:',
+        error
+      );
+    }
+
+  }
+
+}
+
+function returnToMenu(){
+
+  try{
+    victorySound.pause();
+    victorySound.currentTime = 0;
+  }catch(error){}
+
+  gamePaused = false;
+  running = false;
+  preRolling = false;
+
+  music.pause();
+
+  document.body
+    .classList.remove(
+      'game-paused'
+    );
+
+  /*
+    O menu inicial já monta todos os estados da partida corretamente.
+    Recarregar evita que notas/combos da partida interrompida vazem
+    para a próxima tentativa.
+  */
+  location.reload();
+
+}
+
+async function startMode(
   selectedMode
 ){
 
-  state.mode = selectedMode;
+  gamePaused = false;
+  preRollElapsedAtPause = 0;
+  defeatSequence = null;
+  completionSequence = null;
+  resultCelebrationSequence = null;
+  pauseOverlay.classList.add('hidden');
+  defeatOverlay.classList.add('hidden');
+  completionOverlay.classList.add('hidden');
+  resultOverlay.classList.add('hidden');
+  document.body.classList.remove(
+    'game-paused',
+    'defeat-sequence',
+    'completion-celebration'
+  );
 
-  const mode =
-    state.mode;
+  mode = selectedMode;
 
-  showMatchHud();
+  resetSceneDancers();
 
-  layoutRings(mode);
+  document.body
+    .classList.toggle(
+      'single',
+      mode === 1
+    );
+
+  document.body
+    .classList.toggle(
+      'extreme',
+      DIFFICULTIES[selectedDifficulty].special
+    );
+
+  ringP1.position.x =
+    mode === 2
+      ? -72
+      : 30;
+
+  ringP2.visible =
+    mode === 2;
+
+  document
+    .querySelector('#boardP2')
+    .style.display =
+      mode === 2
+        ? 'block'
+        : 'none';
+
+  document
+    .querySelector('#hudP2')
+    .style.display =
+      mode === 2
+        ? 'block'
+        : 'none';
+
+  document
+    .querySelector('#p2ProgressTag')
+    .style.display =
+      mode === 2
+        ? 'inline-block'
+        : 'none';
+
+  document
+    .querySelector('#difficultyHud')
+    .textContent =
+      DIFFICULTIES[
+        selectedDifficulty
+      ].label;
 
   const eventSet =
     buildDifficultyEvents();
 
-  state.players.p1 =
+  players.p1 =
     makePlayer(
       'p1',
       P1_KEYS,
@@ -82,7 +194,7 @@ export async function startMode(
       eventSet
     );
 
-  state.players.p2 =
+  players.p2 =
     mode === 2
       ? makePlayer(
           'p2',
@@ -92,59 +204,101 @@ export async function startMode(
         )
       : null;
 
-  spawnDancers(mode);
+  updatePlayerHud(players.p1);
 
+  if(players.p2){
+    updatePlayerHud(players.p2);
+  }
+
+  createP1(
+    mode === 2
+      ? -72
+      : 30
+  );
+
+  if(mode === 2){
+    createP2(72);
+  }
+
+  menu.style.display =
+    'none';
+
+  hud.style.display =
+    'block';
+
+  stopMenuPreview();
   music.pause();
+  music.volume = 1;
 
-  music.currentTime =
-    state.beatmap.audioStart;
+  await seekMusicTo(AUDIO_START);
 
   await startPreRoll();
 
   /*
-    Audio é o relógio mestre.
+    O pré-roll usa um relógio visual separado. Antes de iniciar o áudio,
+    reposicionamos novamente no início exato para impedir que a primeira
+    nota recue quando o relógio mestre muda para music.currentTime.
   */
-  await music.play();
+  await seekMusicTo(AUDIO_START);
 
-  state.running = true;
+  running = true;
+  lastAnimationAt = performance.now();
+
+  try{
+    await music.play();
+  }catch(error){
+    running = false;
+    console.error('Não foi possível iniciar a música:', error);
+    throw error;
+  }
 
 }
 
 async function startPreRoll(){
 
-  const travelTime =
-    currentDifficulty().travelTime;
+  preRollDuration =
+    PRE_ROLL_SECONDS;
 
-  /*
-    Mesmo no EXTREMO o jogador recebe
-    alguns segundos para se preparar.
-    A nota só aparece quando entra
-    na janela de viagem correspondente.
-  */
-  state.preRollDuration =
-    Math.max(
-      3,
-      travelTime
-    );
-
-  state.preRollStartedAt =
+  preRollStartedAt =
     performance.now();
 
-  state.preRolling = true;
+  preRolling = true;
+
+  clearTimeout(
+    countdown._hideTimer
+  );
+
+  countdown.classList.remove(
+    'dance',
+    'pulse'
+  );
+
+  countdown.style.display =
+    'grid';
+
+  countdown.textContent =
+    '';
+
+  startPreMatchAnimations();
 
   while(true){
+
+    if(gamePaused){
+      await wait(35);
+      continue;
+    }
 
     const elapsed =
       (
         performance.now() -
-        state.preRollStartedAt
+        preRollStartedAt
       ) /
       1000;
 
     const remaining =
       Math.max(
         0,
-        state.preRollDuration -
+        preRollDuration -
         elapsed
       );
 
@@ -152,64 +306,697 @@ async function startPreRoll(){
       break;
     }
 
-    const ratio =
-      remaining /
-      state.preRollDuration;
+    const nextLabel =
+      String(
+        Math.max(
+          1,
+          Math.ceil(remaining)
+        )
+      );
 
-    showCountdown(
-      ratio > .67
-        ? '3'
-        : ratio > .34
-          ? '2'
-          : '1'
-    );
+    if(
+      countdown.textContent !==
+      nextLabel
+    ){
+
+      countdown.textContent =
+        nextLabel;
+
+      countdown.classList.remove(
+        'pulse'
+      );
+
+      void countdown.offsetWidth;
+
+      countdown.classList.add(
+        'pulse'
+      );
+
+    }
 
     await wait(35);
 
   }
 
-  showCountdown('GO!');
+  while(gamePaused){
+    await wait(35);
+  }
 
-  await wait(220);
+  countdown.textContent =
+    'DANCE!';
 
-  hideCountdown();
+  countdown.classList.remove(
+    'pulse'
+  );
 
-  state.preRolling = false;
+  countdown.classList.add(
+    'dance'
+  );
+
+  preRolling = false;
+
+  /*
+    A coreografia é armada no mesmo instante em que DANCE! aparece.
+    O áudio será iniciado imediatamente após o retorno desta função.
+  */
+  beginDanceAnimations();
+
+  countdown._hideTimer =
+    setTimeout(
+      () => {
+
+        countdown.style.display =
+          'none';
+
+        countdown.classList.remove(
+          'dance',
+          'pulse'
+        );
+
+      },
+      DANCE_BANNER_MS
+    );
 
 }
 
-/* Chamado a cada quadro pelo palco 3D. */
-export function updateGame(){
+function endByMistakeLimit(
+  triggeringPlayer
+){
 
-  const players =
-    state.players;
+  if(!running){
+    return;
+  }
 
-  if(state.preRolling){
+  running = false;
+  preRolling = false;
+  gamePaused = false;
+  completionSequence = null;
+  completionOverlay.classList.add('hidden');
+
+  music.pause();
+
+  pauseOverlay.classList.add('hidden');
+  document.body.classList.remove('game-paused', 'completion-celebration');
+  document.body.classList.add('defeat-sequence');
+
+  const outcome =
+    mode === 2
+      ? chooseMultiplayerOutcome(triggeringPlayer)
+      : {
+          winner: null,
+          loser: triggeringPlayer
+        };
+
+  const loser = outcome.loser;
+  const winner = outcome.winner;
+
+  const defeatDuration =
+    startDefeatAnimation(loser);
+
+  /*
+    A animação de vitória só acontece quando a partida de 2 jogadores
+    termina pelo sistema de limite de erros. O encerramento normal da
+    música continua usando somente a tela de resultado tradicional.
+  */
+  const victoryDuration =
+    mode === 2 && winner
+      ? startVictoryAnimation(winner)
+      : 0;
+
+  const duration =
+    Math.max(
+      defeatDuration,
+      victoryDuration
+    );
+
+  defeatSequence = {
+    loser,
+    winner,
+    startedAt: performance.now(),
+    lastAt: performance.now(),
+    duration,
+    overlayShown: false
+  };
+
+}
+
+function startDefeatAnimation(
+  loser
+){
+
+  const dancer =
+    dancers[loser?.id];
+
+  const clip =
+    dancer?.defeatClip ||
+    defeatClip;
+
+  if(
+    !dancer ||
+    !clip
+  ){
+    return 1.2;
+  }
+
+  try{
+
+    dancer.mixer.stopAllAction();
+    dancer.mixer.setTime(0);
+
+    const action =
+      dancer.mixer.clipAction(
+        clip
+      );
+
+    action.reset();
+    action.enabled = true;
+    action.setEffectiveWeight(1);
+    action.setLoop(
+      THREE.LoopOnce,
+      1
+    );
+    action.clampWhenFinished = true;
+    action.play();
+
+    dancer.defeatAction = action;
+
+    return THREE.MathUtils.clamp(
+      clip.duration || 2,
+      1.2,
+      4.5
+    );
+
+  }catch(error){
+
+    console.error(
+      'Não foi possível executar a animação de derrota:',
+      error
+    );
+
+    return 1.2;
+
+  }
+
+}
+
+function startVictoryAnimation(
+  winner
+){
+
+  const dancer =
+    dancers[winner?.id];
+
+  const clip =
+    dancer?.victoryClip ||
+    victoryClip;
+
+  if(
+    !dancer ||
+    !clip
+  ){
+    return 0;
+  }
+
+  try{
+
+    dancer.mixer.stopAllAction();
+    dancer.mixer.setTime(0);
+
+    const action =
+      dancer.mixer.clipAction(
+        clip
+      );
+
+    action.reset();
+    action.enabled = true;
+    action.setEffectiveWeight(1);
+    action.setLoop(
+      THREE.LoopOnce,
+      1
+    );
+    action.clampWhenFinished = true;
+    action.play();
+
+    dancer.victoryAction = action;
+
+    return THREE.MathUtils.clamp(
+      clip.duration || 2,
+      1.2,
+      4.5
+    );
+
+  }catch(error){
+
+    console.error(
+      'Não foi possível executar a animação de vitória:',
+      error
+    );
+
+    return 0;
+
+  }
+
+}
+
+function updateDefeatSequence(){
+
+  if(
+    !defeatSequence ||
+    defeatSequence.overlayShown
+  ){
+    return;
+  }
+
+  const now =
+    performance.now();
+
+  const delta =
+    Math.max(
+      0,
+      (now - defeatSequence.lastAt) / 1000
+    );
+
+  defeatSequence.lastAt = now;
+
+  const loserDancer =
+    dancers[defeatSequence.loser?.id];
+
+  if(
+    loserDancer?.defeatAction &&
+    (loserDancer.defeatClip || defeatClip)
+  ){
+    loserDancer.mixer.update(delta);
+  }
+
+  const winnerDancer =
+    dancers[defeatSequence.winner?.id];
+
+  if(
+    winnerDancer?.victoryAction &&
+    (winnerDancer.victoryClip || victoryClip)
+  ){
+    winnerDancer.mixer.update(delta);
+  }
+
+  const elapsed =
+    (now - defeatSequence.startedAt) / 1000;
+
+  if(
+    elapsed >= defeatSequence.duration + .12
+  ){
+
+    defeatSequence.overlayShown = true;
+    showDefeatOverlay(
+      defeatSequence.loser,
+      defeatSequence.winner
+    );
+
+  }
+
+}
+
+function showDefeatOverlay(
+  loser,
+  winner
+){
+
+  const limit =
+    DIFFICULTIES[selectedDifficulty].missLimit;
+
+  const loserLabel =
+    loser.id.toUpperCase();
+
+  if(mode === 1){
+
+    defeatTitle.textContent =
+      'PERDEU!';
+
+    defeatMessage.textContent =
+      'Você errou demais!';
+
+    defeatDetails.textContent =
+      `Limite do ${DIFFICULTIES[selectedDifficulty].label}: ${limit} erros seguidos.`;
+
+  }else{
+
+    const winnerLabel =
+      winner.id.toUpperCase();
+
+    defeatTitle.textContent =
+      `${winnerLabel} VENCEU!`;
+
+    defeatMessage.textContent =
+      `${loserLabel} perdeu! Você errou demais!`;
+
+    defeatDetails.textContent =
+      `Erros na partida — P1: ${players.p1.results.miss} · P2: ${players.p2.results.miss}. Limite: ${limit} erros seguidos.`;
+
+  }
+
+  defeatOverlay.classList.remove('hidden');
+  defeatRetryButton.focus();
+
+}
+
+function retryCurrentMode(){
+
+  const retryMode = mode;
+
+  defeatSequence = null;
+  defeatOverlay.classList.add('hidden');
+  document.body.classList.remove('defeat-sequence');
+
+  startMode(retryMode);
+
+}
+
+function gameTime(){
+
+  return (
+    music.currentTime -
+    AUDIO_START
+  );
+
+}
+
+function currentPreviewState(){
+
+  if(!preRolling){
+    return {
+      time: gameTime(),
+      progress: 1
+    };
+  }
+
+  const elapsed =
+    (
+      performance.now() -
+      preRollStartedAt
+    ) /
+    1000;
+
+  const progress =
+    THREE.MathUtils.clamp(
+      elapsed /
+      Math.max(preRollDuration, .001),
+      0,
+      1
+    );
+
+  const travelTime =
+    DIFFICULTIES[
+      selectedDifficulty
+    ].travelTime;
+
+  /*
+    Durante 3 → 2 → 1, o relógio visual parte antes do zero e chega
+    exatamente em 0. A velocidade das notas começa reduzida e converge
+    para a velocidade real, evitando qualquer salto ao iniciar a música.
+  */
+  const previewStart =
+    -Math.max(
+      2.4,
+      travelTime * 1.15
+    );
+
+  return {
+    time:
+      previewStart *
+      (1 - progress),
+    progress
+  };
+
+}
+
+function updateCollection(
+  player,
+  collection,
+  t,
+  travelTime,
+  targetY,
+  allowMisses,
+  maxY = Infinity
+){
+
+  for(
+    const note
+    of collection
+  ){
+
+    if(note.resolved){
+      continue;
+    }
+
+    const secondsUntil =
+      note.time -
+      t;
+
+    /*
+      Ainda não entrou na pista.
+    */
+    if(
+      secondsUntil >
+      travelTime
+    ){
+
+      note.element.style.display =
+        'none';
+
+      continue;
+    }
+
+    /*
+      Já passou bastante da zona.
+    */
+    if(
+      secondsUntil <
+      -.8
+    ){
+
+      note.element.style.display =
+        'none';
+
+      continue;
+    }
+
+    const progress =
+      1 -
+      (
+        secondsUntil /
+        travelTime
+      );
+
+    let y =
+      SPAWN_Y +
+      (
+        targetY -
+        SPAWN_Y
+      ) *
+      progress;
+
+    /*
+      No pré-jogo as notas podem se aproximar, mas nunca encostam
+      no receptor antes do DANCE!.
+    */
+    y = Math.min(
+      y,
+      maxY
+    );
+
+    note.element.style.display =
+      'grid';
+
+    note.element.style.top =
+      y + '%';
+
+    const near =
+      Math.max(
+        0,
+        1 -
+        Math.abs(
+          secondsUntil
+        ) /
+        .44
+      );
+
+    note.element.style.transform =
+      `translate(-50%,-50%) scale(${1 + near * .08})`;
+
+    note.element.style.opacity =
+      String(
+        Math.max(
+          .34,
+          1 -
+          Math.max(
+            0,
+            -secondsUntil
+          ) *
+          1.4
+        )
+      );
+
+    if(
+      allowMisses &&
+      t >
+        note.time +
+        HIT.good &&
+      !note.resolved
+    ){
+
+      resolvePassedNote(
+        player,
+        note
+      );
+
+      if(!running){
+        return;
+      }
+
+    }
+
+  }
+
+}
+
+function updatePlayerNotes(
+  player,
+  t,
+  allowMisses,
+  options = {}
+){
+
+  if(!player){
+    return;
+  }
+
+  const travelTime =
+    DIFFICULTIES[
+      selectedDifficulty
+    ].travelTime *
+    (options.travelTimeMultiplier ?? 1);
+
+  const maxY =
+    options.maxY ?? Infinity;
+
+  updateCollection(
+    player,
+    player.notes,
+    t,
+    travelTime,
+    NORMAL_TARGET_Y,
+    allowMisses,
+    maxY
+  );
+
+  if(
+    allowMisses &&
+    !running
+  ){
+    return;
+  }
+
+  if(
+    selectedDifficulty ===
+    'extreme'
+  ){
+
+    updateCollection(
+      player,
+      player.specials,
+      t,
+      travelTime,
+      NORMAL_TARGET_Y,
+      allowMisses,
+      maxY
+    );
+
+  }
+
+  moveIndices(player);
+
+}
+
+function updateProgress(
+  t
+){
+
+  const pct =
+    Math.max(
+      0,
+      Math.min(
+        100,
+        (
+          t /
+          GAME_DURATION
+        ) *
+        100
+      )
+    );
+
+  document
+    .querySelector('#progressFill')
+    .style.width =
+      pct + '%';
+
+  document
+    .querySelector('#progressPct')
+    .textContent =
+      Math.round(pct) + '%';
+
+}
+
+function updateGame(){
+
+  if(gamePaused){
+    return;
+  }
+
+  if(preRolling){
 
     const preview =
-      currentPreviewTime();
+      currentPreviewState();
+
+    const travelTimeMultiplier =
+      1 +
+      (
+        1 -
+        preview.progress
+      ) *
+      (
+        PRE_ROLL_VISUAL_SPEED_MULTIPLIER -
+        1
+      );
+
+    const previewOptions = {
+      travelTimeMultiplier,
+      maxY: PRE_ROLL_MAX_Y
+    };
 
     updatePlayerNotes(
       players.p1,
-      preview,
-      false
+      preview.time,
+      false,
+      previewOptions
     );
 
-    if(state.mode === 2){
+    if(mode === 2){
 
       updatePlayerNotes(
         players.p2,
-        preview,
-        false
+        preview.time,
+        false,
+        previewOptions
       );
 
     }
+
+    updatePreMatchAnimations();
 
     return;
 
   }
 
-  if(!state.running){
+  if(!running){
     return;
   }
 
@@ -222,7 +1009,11 @@ export function updateGame(){
     true
   );
 
-  if(state.mode === 2){
+  if(!running){
+    return;
+  }
+
+  if(mode === 2){
 
     updatePlayerNotes(
       players.p2,
@@ -232,19 +1023,19 @@ export function updateGame(){
 
   }
 
-  updateDancers(t);
+  updateAnimation();
 
   updateProgress(t);
 
   if(
     music.currentTime >=
-      state.beatmap.audioEnd ||
+      AUDIO_END ||
     t >=
-      state.beatmap.duration
+      GAME_DURATION
   ){
 
     music.pause();
-    music.currentTime = state.beatmap.audioEnd;
+    music.currentTime = AUDIO_END;
 
     finish();
 
@@ -252,58 +1043,45 @@ export function updateGame(){
 
 }
 
-export function finish(){
+function finish(){
 
-  if(!state.running){
+  if(!running){
     return;
   }
 
-  state.running = false;
+  running = false;
+  preRolling = false;
+  gamePaused = false;
 
   music.pause();
 
-  disableDancers();
-
-  let saveError = null;
-
-  try{
-
-    recordMatch({
-      songId: state.songId,
-      difficulty: state.difficulty,
-      mode: state.mode,
-      players: [
-        {
-          id: 'P1',
-          score: state.players.p1.score
-        },
-        ...(state.mode === 2
-          ? [
-              {
-                id: 'P2',
-                score: state.players.p2.score
-              }
-            ]
-          : [])
-      ]
-    });
-
-  }catch(error){
-
-    console.error(
-      'Não foi possível salvar a partida no ranking.',
-      error
-    );
-
-    saveError =
-      'Não foi possível salvar esta partida no ranking deste navegador.';
-
-  }
-
-  showResults(
-    state.players,
-    state.mode,
-    saveError
-  );
+  /*
+    Encerramento normal = celebração.
+    Derrota por limite de erros não passa por finish(), portanto nunca
+    dispara YOU DANCE! nem estas coreografias.
+  */
+  startCompletionCelebration();
 
 }
+
+
+Object.assign(globalThis, {
+  pauseGame,
+  resumeGame,
+  returnToMenu,
+  startMode,
+  startPreRoll,
+  endByMistakeLimit,
+  startDefeatAnimation,
+  startVictoryAnimation,
+  updateDefeatSequence,
+  showDefeatOverlay,
+  retryCurrentMode,
+  gameTime,
+  currentPreviewState,
+  updateCollection,
+  updatePlayerNotes,
+  updateProgress,
+  updateGame,
+  finish
+});

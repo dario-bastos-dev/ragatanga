@@ -1,43 +1,6 @@
-import {
-  HIT,
-  MISS_PENALTY,
-  SPECIAL_SCORE
-} from '../config/gameplay.js';
+import '../core/state.js';
 
-import {
-  gameTime
-} from '../audio/music.js';
-
-import {
-  setDancerEnabled
-} from '../scene/dancers.js';
-
-import {
-  updatePlayerHud,
-  pulseReceptor,
-  pulseSpecial,
-  animateNote,
-  showJudgement,
-  triggerShake
-} from '../ui/hud.js';
-
-/*
-  Julgamento: transforma teclas em PERFECT/GREAT/GOOD/MISS,
-  atualiza placar e combo e liga/desliga a dança do personagem.
-*/
-
-/* Nome da tecla do especial na tela: X (P1) ou ENTER (P2). */
-function specialLabel(
-  key
-){
-
-  return key === 'Enter'
-    ? 'ENTER'
-    : 'X';
-
-}
-
-export function handleInput(
+function handleInput(
   player,
   key
 ){
@@ -66,7 +29,7 @@ export function handleInput(
 
     registerInputMiss(
       player,
-      'MISS'
+      'ERROU'
     );
 
     return;
@@ -81,7 +44,7 @@ export function handleInput(
 
 }
 
-export function handleSpecialInput(
+function handleSpecialInput(
   player,
   key
 ){
@@ -110,7 +73,9 @@ export function handleSpecialInput(
 
     registerInputMiss(
       player,
-      'MISS ' + specialLabel(key)
+      key === 'Enter'
+        ? 'ERROU ENTER'
+        : 'ERROU X'
     );
 
     return;
@@ -208,7 +173,7 @@ function judgeCandidate(
       resolveHit(
         player,
         note,
-        'PERFECT',
+        'PERFEITO',
         100,
         'perfect'
       );
@@ -221,7 +186,7 @@ function judgeCandidate(
       resolveHit(
         player,
         note,
-        'GREAT',
+        'ÓTIMO',
         75,
         'great'
       );
@@ -231,7 +196,7 @@ function judgeCandidate(
       resolveHit(
         player,
         note,
-        'GOOD',
+        'BOM',
         50,
         'good'
       );
@@ -245,13 +210,34 @@ function judgeCandidate(
   registerInputMiss(
     player,
     special
-      ? 'MISS ' + specialLabel(note.key)
+      ? (
+          note.key === 'Enter'
+            ? 'ERROU ENTER'
+            : 'ERROU X'
+        )
       : (
           signed < 0
-            ? 'MISS • CEDO'
-            : 'MISS • TARDE'
+            ? 'ERROU • CEDO'
+            : 'ERROU • TARDE'
         )
   );
+
+}
+
+function setDancerEnabled(
+  id,
+  enabled
+){
+
+  const dancer =
+    dancers[id];
+
+  if(!dancer){
+    return;
+  }
+
+  dancer.enabled =
+    enabled;
 
 }
 
@@ -269,6 +255,7 @@ function resolveHit(
     points;
 
   player.combo++;
+  player.consecutiveMisses = 0;
 
   player.maxCombo =
     Math.max(
@@ -316,6 +303,7 @@ function resolveSpecialHit(
     SPECIAL_SCORE;
 
   player.combo++;
+  player.consecutiveMisses = 0;
 
   player.maxCombo =
     Math.max(
@@ -343,8 +331,11 @@ function resolveSpecialHit(
 
   showJudgement(
     player.id,
-    specialLabel(note.key) +
-      ' SPECIAL +' +
+    (
+      note.key === 'Enter'
+        ? 'ENTER ESPECIAL +'
+        : 'X ESPECIAL +'
+    ) +
       SPECIAL_SCORE,
     false
   );
@@ -368,11 +359,14 @@ function registerInputMiss(
 
   player.combo = 0;
   player.results.miss++;
+  player.consecutiveMisses++;
 
   setDancerEnabled(
     player.id,
     false
   );
+
+  playMissSound();
 
   showJudgement(
     player.id,
@@ -383,11 +377,11 @@ function registerInputMiss(
 
   triggerShake();
   updatePlayerHud(player);
+  checkMistakeLimit(player);
 
 }
 
-/* Nota que passou da janela de acerto sem ser tocada. */
-export function resolvePassedNote(
+function resolvePassedNote(
   player,
   note
 ){
@@ -407,11 +401,14 @@ export function resolvePassedNote(
 
   player.combo = 0;
   player.results.miss++;
+  player.consecutiveMisses++;
 
   setDancerEnabled(
     player.id,
     false
   );
+
+  playMissSound();
 
   animateNote(
     note,
@@ -420,13 +417,13 @@ export function resolvePassedNote(
 
   showJudgement(
     player.id,
-    (
-      note.type === 'special'
-        ? 'MISS ' + specialLabel(note.key)
-        : 'MISS'
-    ) +
-      ' -' +
-      MISS_PENALTY,
+    note.type === 'special'
+      ? (
+          note.key === 'Enter'
+            ? 'ERROU ENTER -' + MISS_PENALTY
+            : 'ERROU X -' + MISS_PENALTY
+        )
+      : 'ERROU -' + MISS_PENALTY,
     true
   );
 
@@ -434,10 +431,85 @@ export function resolvePassedNote(
 
   moveIndices(player);
   updatePlayerHud(player);
+  checkMistakeLimit(player);
 
 }
 
-export function moveIndices(
+function checkMistakeLimit(
+  player
+){
+
+  if(
+    !running ||
+    !player
+  ){
+    return;
+  }
+
+  const limit =
+    DIFFICULTIES[selectedDifficulty].missLimit;
+
+  if(
+    player.consecutiveMisses < limit
+  ){
+    return;
+  }
+
+  endByMistakeLimit(player);
+
+}
+
+function chooseMultiplayerOutcome(
+  triggeringPlayer
+){
+
+  const p1 = players.p1;
+  const p2 = players.p2;
+
+  /*
+    Regra pedida para 2 jogadores: vence quem errou menos durante
+    a partida. Em empate de erros, a pontuação desempata. Persistindo
+    empate, quem atingiu o limite de erros é considerado derrotado.
+  */
+  if(p1.results.miss !== p2.results.miss){
+
+    const winner =
+      p1.results.miss < p2.results.miss
+        ? p1
+        : p2;
+
+    return {
+      winner,
+      loser: winner === p1 ? p2 : p1
+    };
+
+  }
+
+  if(p1.score !== p2.score){
+
+    const winner =
+      p1.score > p2.score
+        ? p1
+        : p2;
+
+    return {
+      winner,
+      loser: winner === p1 ? p2 : p1
+    };
+
+  }
+
+  return {
+    winner:
+      triggeringPlayer === p1
+        ? p2
+        : p1,
+    loser: triggeringPlayer
+  };
+
+}
+
+function moveIndices(
   player
 ){
 
@@ -462,3 +534,19 @@ export function moveIndices(
   }
 
 }
+
+
+Object.assign(globalThis, {
+  handleInput,
+  handleSpecialInput,
+  findCandidate,
+  judgeCandidate,
+  setDancerEnabled,
+  resolveHit,
+  resolveSpecialHit,
+  registerInputMiss,
+  resolvePassedNote,
+  checkMistakeLimit,
+  chooseMultiplayerOutcome,
+  moveIndices
+});

@@ -1,62 +1,30 @@
 /*
-  Rhythm Battle — ponto de entrada.
-  Só inicializa os módulos e conecta os eventos entre eles.
-
-  config/    dados estáticos (músicas, dificuldades, teclas, regras)
-  core/      estado compartilhado da partida e utilitários
-  audio/     música e relógio da partida
-  scene/     palco 3D, personagem e coreografias
-  gameplay/  notas, julgamento, teclado e ciclo da partida
-  ui/        menu, HUD e resultado
+  You Dance v2.17 — ponto de entrada modular.
+  A lógica fica dividida por domínio; este arquivo apenas conecta os módulos.
 */
-import {
-  music
-} from './audio/music.js';
+import './core/state.js';
+import './core/utils.js';
+import './core/leaderboard.js';
+import './ui/leaderboard.js';
+import './audio/music.js';
+import './scene/thriller-skin.js';
+import './scene/characters.js';
+import './scene/dancers.js';
+import './gameplay/chart.js';
+import './ui/hud.js';
+import './gameplay/judge.js';
+import './ui/results.js';
+import './gameplay/session.js';
+import './gameplay/input.js';
+import './ui/menu.js';
+import './scene/stage.js';
+import { initControls } from './ui/controls.js';
 
-import {
-  initStage
-} from './scene/stage.js';
+resultOverlay?.classList.add('hidden');
 
-import {
-  loadCharacter
-} from './scene/character.js';
-
-import {
-  initMenu,
-  updateMenuAvailability
-} from './ui/menu.js';
-
-import {
-  initLeaderboard
-} from './ui/leaderboard.js';
-
-import {
-  initInput
-} from './gameplay/input.js';
-
-import {
-  startMode,
-  updateGame,
-  finish
-} from './gameplay/session.js';
-
-initMenu({
-  onStart: startMode
-});
-
+initSongMenu();
+initDifficultyMenu();
 initLeaderboard();
-
-initStage(updateGame);
-
-loadCharacter(
-  updateMenuAvailability,
-  updateMenuAvailability
-);
-
+initControls();
 initInput();
-
-/* Garante o fim da partida se o áudio acabar antes da janela. */
-music.addEventListener(
-  'ended',
-  finish
-);
+init3D();

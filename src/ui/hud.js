@@ -1,94 +1,154 @@
-import {
-  state,
-  currentDifficulty,
-  hasSpecialLane
-} from '../core/state.js';
+import '../core/state.js';
 
-/*
-  HUD da partida: placar, combo, progresso, julgamentos,
-  receptores, contagem regressiva e efeitos de tela.
-*/
-const menu =
-  document.querySelector('#menuOverlay');
-
-const hud =
-  document.querySelector('#hud');
-
-const countdown =
-  document.querySelector('#countdown');
-
-/* Esconde o menu e prepara o HUD para o modo/dificuldade escolhidos. */
-export function showMatchHud(){
-
-  const mode =
-    state.mode;
-
-  document.body
-    .classList.toggle(
-      'single',
-      mode === 1
-    );
-
-  document.body
-    .classList.toggle(
-      'extreme',
-      hasSpecialLane()
-    );
-
-  document
-    .querySelector('#boardP2')
-    .style.display =
-      mode === 2
-        ? 'block'
-        : 'none';
-
-  document
-    .querySelector('#hudP2')
-    .style.display =
-      mode === 2
-        ? 'block'
-        : 'none';
-
-  document
-    .querySelector('#p2ProgressTag')
-    .style.display =
-      mode === 2
-        ? 'inline-block'
-        : 'none';
-
-  document
-    .querySelector('#difficultyHud')
-    .textContent =
-      currentDifficulty().label;
-
-  menu.style.display =
-    'none';
-
-  hud.style.display =
-    'block';
-
-}
-
-export function showCountdown(
-  text
+function updatePerformanceMeter(
+  player
 ){
 
-  countdown.style.display =
-    'grid';
+  if(!player){
+    return;
+  }
 
-  countdown.textContent =
-    text;
+  const suffix =
+    player.id.toUpperCase();
+
+  const meter =
+    document.querySelector(
+      '#performance' + suffix
+    );
+
+  const needle =
+    document.querySelector(
+      '#performanceNeedle' + suffix
+    );
+
+  const status =
+    document.querySelector(
+      '#performanceStatus' + suffix
+    );
+
+  if(
+    !meter ||
+    !needle ||
+    !status
+  ){
+    return;
+  }
+
+  const limit =
+    DIFFICULTIES[
+      selectedDifficulty
+    ].missLimit;
+
+  /*
+    Faixas proporcionais ao limite da dificuldade.
+    Exemplo no Fácil (10 erros):
+    0-3 = verde, 4-6 = amarelo, 7-10 = vermelho.
+  */
+  const greenMax =
+    Math.max(
+      1,
+      Math.floor(limit * .3)
+    );
+
+  const yellowMax =
+    Math.max(
+      greenMax + 1,
+      Math.floor(limit * .6)
+    );
+
+  const misses =
+    Math.max(
+      0,
+      Math.min(
+        limit,
+        player.consecutiveMisses
+      )
+    );
+
+  const progress =
+    limit > 0
+      ? misses / limit
+      : 0;
+
+  /*
+    A performance boa fica à direita (verde) e o perigo à esquerda (vermelho).
+    Com 0 erros a seta começa em 98%; ao atingir o limite chega a 2%.
+    A pequena margem mantém a seta inteira dentro da barra.
+  */
+  const needlePercent =
+    98 - progress * 96;
+
+  needle.style.left =
+    needlePercent + '%';
+
+  let state = 'green';
+  let label = 'ÓTIMA';
+
+  if(misses > yellowMax){
+    state = 'red';
+    label = 'PERIGO';
+  }else if(misses > greenMax){
+    state = 'yellow';
+    label = 'ATENÇÃO';
+  }
+
+  /*
+    A partir de 80% do limite, a barra e a seta tremem para comunicar
+    que faltam poucos erros consecutivos para a derrota.
+  */
+  const criticalThreshold =
+    Math.max(
+      yellowMax + 1,
+      Math.ceil(limit * .8)
+    );
+
+  const critical =
+    misses >= criticalThreshold;
+
+  if(critical){
+    label = 'PERIGO!';
+  }
+
+  meter.dataset.state = state;
+  meter.classList.toggle(
+    'critical',
+    critical
+  );
+  status.textContent = label;
+
+  const greenMarker =
+    document.querySelector(
+      '#performanceGreen' + suffix
+    );
+
+  const yellowMarker =
+    document.querySelector(
+      '#performanceYellow' + suffix
+    );
+
+  const limitMarker =
+    document.querySelector(
+      '#performanceLimit' + suffix
+    );
+
+  if(greenMarker){
+    greenMarker.textContent =
+      greenMax;
+  }
+
+  if(yellowMarker){
+    yellowMarker.textContent =
+      yellowMax;
+  }
+
+  if(limitMarker){
+    limitMarker.textContent =
+      limit;
+  }
 
 }
 
-export function hideCountdown(){
-
-  countdown.style.display =
-    'none';
-
-}
-
-export function updatePlayerHud(
+function updatePlayerHud(
   player
 ){
 
@@ -114,38 +174,32 @@ export function updatePlayerHud(
       'COMBO x' +
       player.combo;
 
-}
-
-export function updateProgress(
-  t
-){
-
-  const pct =
-    Math.max(
-      0,
-      Math.min(
-        100,
-        (
-          t /
-          state.beatmap.duration
-        ) *
-        100
-      )
+  const missCounter =
+    document.querySelector(
+      '#miss' +
+      player.id.toUpperCase()
     );
 
-  document
-    .querySelector('#progressFill')
-    .style.width =
-      pct + '%';
+  if(missCounter){
 
-  document
-    .querySelector('#progressPct')
-    .textContent =
-      Math.round(pct) + '%';
+    const limit =
+      DIFFICULTIES[selectedDifficulty].missLimit;
+
+    missCounter.textContent =
+      `ERROS SEGUIDOS ${player.consecutiveMisses}/${limit}`;
+
+    missCounter.classList.toggle(
+      'danger',
+      player.consecutiveMisses >= Math.ceil(limit * .7)
+    );
+
+  }
+
+  updatePerformanceMeter(player);
 
 }
 
-export function pulseReceptor(
+function pulseReceptor(
   id,
   key,
   className
@@ -186,7 +240,7 @@ export function pulseReceptor(
 
 }
 
-export function pulseSpecial(
+function pulseSpecial(
   id,
   key,
   className
@@ -227,7 +281,7 @@ export function pulseSpecial(
 
 }
 
-export function animateNote(
+function animateNote(
   note,
   className
 ){
@@ -249,7 +303,7 @@ export function animateNote(
 
 }
 
-export function showJudgement(
+function showJudgement(
   id,
   text,
   isMiss
@@ -305,7 +359,7 @@ export function showJudgement(
 
 }
 
-export function triggerShake(){
+function triggerShake(){
 
   document.body
     .classList.remove(
@@ -332,3 +386,14 @@ export function triggerShake(){
   );
 
 }
+
+
+Object.assign(globalThis, {
+  updatePerformanceMeter,
+  updatePlayerHud,
+  pulseReceptor,
+  pulseSpecial,
+  animateNote,
+  showJudgement,
+  triggerShake
+});

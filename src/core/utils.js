@@ -1,4 +1,6 @@
-export function formatTime(seconds){
+import './state.js';
+
+function formatTime(seconds){
 
   const minutes =
     Math.floor(seconds / 60);
@@ -11,7 +13,7 @@ export function formatTime(seconds){
 
 }
 
-export function positiveModulo(
+function positiveModulo(
   value,
   modulus
 ){
@@ -27,7 +29,7 @@ export function positiveModulo(
 
 }
 
-export function seededRandom(
+function seededRandom(
   seed
 ){
 
@@ -49,7 +51,7 @@ export function seededRandom(
 
 }
 
-export function wait(
+function wait(
   milliseconds
 ){
 
@@ -63,51 +65,10 @@ export function wait(
 
 }
 
-/*
-  Índice fracionário da batida no instante t (0 = primeira batida),
-  interpolando entre as batidas do beatmap e extrapolando nas pontas.
-*/
-export function beatPosition(
-  beats,
-  t
-){
 
-  const last =
-    beats.length - 1;
-
-  if(t <= beats[0]){
-
-    return (t - beats[0]) /
-      (beats[1] - beats[0]);
-
-  }
-
-  if(t >= beats[last]){
-
-    return last +
-      (t - beats[last]) /
-      (beats[last] - beats[last - 1]);
-
-  }
-
-  let low = 0;
-  let high = last;
-
-  while(high - low > 1){
-
-    const middle =
-      (low + high) >> 1;
-
-    if(beats[middle] <= t){
-      low = middle;
-    }else{
-      high = middle;
-    }
-
-  }
-
-  return low +
-    (t - beats[low]) /
-    (beats[high] - beats[low]);
-
-}
+Object.assign(globalThis, {
+  formatTime,
+  positiveModulo,
+  seededRandom,
+  wait
+});

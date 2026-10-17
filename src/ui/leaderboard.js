@@ -1,29 +1,6 @@
-import {
-  SONGS
-} from '../config/songs.js';
+import '../core/state.js';
 
-import {
-  DIFFICULTIES
-} from '../config/difficulties.js';
-
-import {
-  loadRecentMatches,
-  rankPerformances
-} from '../core/leaderboard.js';
-
-const overlay =
-  document.querySelector('#leaderboardOverlay');
-
-const rows =
-  document.querySelector('#leaderboardRows');
-
-const emptyState =
-  document.querySelector('#leaderboardEmpty');
-
-const errorState =
-  document.querySelector('#leaderboardError');
-
-export function initLeaderboard(){
+function initLeaderboard(){
 
   document
     .querySelector('#openLeaderboard')
@@ -32,19 +9,21 @@ export function initLeaderboard(){
       openLeaderboard
     );
 
-  document
-    .querySelector('#openLeaderboardFromResults')
-    .addEventListener(
+  const resultsLeaderboardButton = document.querySelector('#openLeaderboardFromResults');
+
+  if(resultsLeaderboardButton){
+    resultsLeaderboardButton.addEventListener(
       'click',
       openLeaderboard
     );
+  }
 
   document
     .querySelector('#closeLeaderboard')
     .addEventListener(
       'click',
       () =>
-        overlay.classList.add('hidden')
+        leaderboardOverlay.classList.add('hidden')
     );
 
 }
@@ -52,15 +31,15 @@ export function initLeaderboard(){
 function openLeaderboard(){
 
   renderLeaderboard();
-  overlay.classList.remove('hidden');
+  leaderboardOverlay.classList.remove('hidden');
 
 }
 
 function renderLeaderboard(){
 
-  rows.replaceChildren();
-  emptyState.classList.add('hidden');
-  errorState.classList.add('hidden');
+  leaderboardRows.replaceChildren();
+  leaderboardEmpty.classList.add('hidden');
+  leaderboardError.classList.add('hidden');
 
   try{
 
@@ -70,14 +49,14 @@ function renderLeaderboard(){
       );
 
     if(performances.length === 0){
-      emptyState.classList.remove('hidden');
+      leaderboardEmpty.classList.remove('hidden');
       return;
     }
 
     performances.forEach(
       (performance, index) =>
-        rows.appendChild(
-          createRow(
+        leaderboardRows.appendChild(
+          createLeaderboardRow(
             performance,
             index + 1
           )
@@ -91,16 +70,16 @@ function renderLeaderboard(){
       error
     );
 
-    errorState.textContent =
+    leaderboardError.textContent =
       'Não foi possível carregar o ranking salvo neste navegador.';
 
-    errorState.classList.remove('hidden');
+    leaderboardError.classList.remove('hidden');
 
   }
 
 }
 
-function createRow(
+function createLeaderboardRow(
   performance,
   position
 ){
@@ -127,6 +106,7 @@ function createRow(
 
   cells.forEach(
     (text, index) => {
+
       const cell =
         document.createElement(
           index === 0
@@ -140,9 +120,17 @@ function createRow(
 
       cell.textContent = text;
       row.appendChild(cell);
+
     }
   );
 
   return row;
 
 }
+
+Object.assign(globalThis, {
+  initLeaderboard,
+  openLeaderboard,
+  renderLeaderboard,
+  createLeaderboardRow
+});

@@ -1,42 +1,38 @@
-import {
-  P1_KEYS,
-  P2_KEYS
-} from '../config/gameplay.js';
+import '../core/state.js';
 
-import {
-  state,
-  hasSpecialLane
-} from '../core/state.js';
-
-import {
-  handleInput,
-  handleSpecialInput
-} from './judge.js';
-
-/*
-  Teclado: P1 = A W S D (+ X no EXTREMO),
-  P2 = setas (+ Enter no EXTREMO).
-*/
 export function initInput(){
-
   addEventListener(
     'keydown',
     event => {
 
+      if(event.key === 'Escape'){
+
+        event.preventDefault();
+
+        if(gamePaused){
+          resumeGame();
+        }else{
+          pauseGame();
+        }
+
+        return;
+
+      }
+
       if(
-        !state.running ||
+        gamePaused ||
+        !running ||
         event.repeat
       ){
         return;
       }
 
-      const players =
-        state.players;
-
       const upper =
         event.key.toUpperCase();
 
-      if(hasSpecialLane()){
+      if(
+        DIFFICULTIES[selectedDifficulty].special
+      ){
 
         if(
           upper === 'X'
@@ -52,7 +48,7 @@ export function initInput(){
         }
 
         if(
-          state.mode === 2 &&
+          mode === 2 &&
           event.key === 'Enter'
         ){
 
@@ -83,7 +79,7 @@ export function initInput(){
       }
 
       if(
-        state.mode === 2 &&
+        mode === 2 &&
         P2_KEYS.includes(
           event.key
         )
@@ -100,5 +96,6 @@ export function initInput(){
 
     }
   );
-
 }
+
+globalThis.initInput = initInput;

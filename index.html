@@ -3,107 +3,156 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Rhythm Battle — MVP</title>
+  <title>You Dance</title>
+  <link rel="icon" type="image/png" href="./assets/ui/you-dance-icon.png" />
   <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
 
 <div id="game"></div>
 
-<div id="menuOverlay" class="overlay">
-  <div class="menuCard">
+<div id="menuOverlay" class="overlay menuOverlayYd">
+  <div class="menuShell">
+    <aside class="menuHeroPanel" aria-label="You Dance">
+      <img src="./assets/ui/you-dance-logo-main.png" alt="You Dance" class="menuSideLogo" />
+      <span id="menuPreviewTitle" class="srOnly">SELECIONE UMA MÚSICA</span>
+      <span id="menuPreviewSubtitle" class="srOnly">Escolha uma música para ouvir e ver uma prévia da coreografia.</span>
+    </aside>
 
-    <div class="eyebrow">RHYTHM BATTLE</div>
-    <h1>ESCOLHA A MÚSICA</h1>
+    <div class="menuCard glassMenuCard liquidGlass">
+      <div class="brandHeader">
+        <img src="./assets/ui/you-dance-logo-lateral.png" alt="You Dance" class="menuMainLogo" />
+        <div class="brandActions">
+          <button id="openLeaderboard" class="rankingOpenButton glassButton" type="button">
+            VER RANKING
+          </button>
+        </div>
+      </div>
 
-    <div class="songGrid">
-      <button class="songCard active" data-song="ragatanga" type="button">
-        <span class="songBadge">DISPONÍVEL</span>
-        <strong>RAGATANGA</strong>
-        <small>Rouge · 1:32 → 2:22</small>
-      </button>
+      <div class="menuSectionLabel">MODO DE JOGO</div>
+      <div class="modeGrid modernModeGrid">
+        <button class="modeBtn p1 selected" id="onePlayer" type="button">
+          <span class="modeIcon">👤</span>
+          <div>
+            <strong>UM JOGADOR</strong>
+            <span>A · W · S · D para dançar</span>
+          </div>
+        </button>
 
-      <button class="songCard" data-song="thriller" type="button">
-        <span class="songBadge">DISPONÍVEL</span>
-        <strong>THRILLER</strong>
-        <small>Michael Jackson · 1:37 → 2:27</small>
-      </button>
+        <button class="modeBtn p2" id="twoPlayers" type="button">
+          <span class="modeIcon">👥</span>
+          <div>
+            <strong>DOIS JOGADORES</strong>
+            <span>P1: A W S D &nbsp;&nbsp; P2: SETAS</span>
+          </div>
+        </button>
+      </div>
 
-      <button class="songCard" data-song="macarena" type="button">
-        <span class="songBadge">DISPONÍVEL</span>
-        <strong>MACARENA</strong>
-        <small>Los Del Rio · 0:41 → 1:31</small>
-      </button>
+      <div class="titleRow">
+        <div class="titlePill"><span class="titlePillIcon">♪</span> ESCOLHA A MÚSICA</div>
+      </div>
 
-      <button class="songCard" data-song="ymca" type="button">
-        <span class="songBadge">DISPONÍVEL</span>
-        <strong>YMCA</strong>
-        <small>Village People · 1:00 → 1:50</small>
-      </button>
+      <div class="songGrid modernSongGrid">
+        <button class="songCard" data-song="ragatanga" type="button">
+          <span class="songBadge">DISPONÍVEL</span>
+          <strong>RAGATANGA</strong>
+          <small>Rouge</small>
+          <span class="songMeta">1:32 / 2:22</span>
+        </button>
+
+        <button class="songCard" data-song="thriller" type="button">
+          <span class="songBadge">DISPONÍVEL</span>
+          <strong>THRILLER</strong>
+          <small>Michael Jackson</small>
+          <span class="songMeta">1:37 / 2:27</span>
+        </button>
+
+        <button class="songCard" data-song="macarena" type="button">
+          <span class="songBadge">DISPONÍVEL</span>
+          <strong>MACARENA</strong>
+          <small>Los Del Rio</small>
+          <span class="songMeta">0:41 / 1:31</span>
+        </button>
+
+        <button class="songCard" data-song="ymca" type="button">
+          <span class="songBadge">DISPONÍVEL</span>
+          <strong>YMCA</strong>
+          <small>Village People</small>
+          <span class="songMeta">1:00 / 1:50</span>
+        </button>
+      </div>
+
+      <div class="titleRow difficultyTitleRow">
+        <div class="titlePill"><span class="titlePillIcon difficultyHeadingStar">★</span> DIFICULDADE</div>
+      </div>
+
+      <div class="difficultyGrid modernDifficultyGrid">
+        <button class="difficultyCard selected" data-difficulty="easy" type="button">
+          <div class="difficultyStars" aria-label="1 de 5 estrelas"><span class="star on">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span></div>
+          <strong>FÁCIL</strong>
+          <span>Menos hits</span>
+          <small>Lento</small>
+        </button>
+
+        <button class="difficultyCard" data-difficulty="normal" type="button">
+          <div class="difficultyStars" aria-label="2 de 5 estrelas"><span class="star on">★</span><span class="star on">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span></div>
+          <strong>NORMAL</strong>
+          <span>Hits intermediários</span>
+          <small>Velocidade normal</small>
+        </button>
+
+        <button class="difficultyCard" data-difficulty="hard" type="button">
+          <div class="difficultyStars" aria-label="3,5 de 5 estrelas"><span class="star on">★</span><span class="star on">★</span><span class="star on">★</span><span class="star half">★</span><span class="star">★</span></div>
+          <strong>DIFÍCIL</strong>
+          <span>Todas as batidas</span>
+          <small>Rápido</small>
+        </button>
+
+        <button class="difficultyCard extremeCard" data-difficulty="extreme" type="button">
+          <div class="difficultyStars" aria-label="5 de 5 estrelas"><span class="star on">★</span><span class="star on">★</span><span class="star on">★</span><span class="star on">★</span><span class="star on">★</span></div>
+          <strong>EXTREMO</strong>
+          <span>Todas as batidas + X</span>
+          <small>2x rápido</small>
+        </button>
+      </div>
+
+      <div id="difficultyInfo">
+        FÁCIL · aproximadamente 1/4 das batidas
+      </div>
+
+      <div id="menuStatus" class="liquidGlass statusGlass">Carregando personagem 3D…</div>
+
+      <div class="startRow">
+        <button id="startGameButton" class="startGameButton" type="button" disabled>
+          INICIAR DANÇA
+        </button>
+      </div>
     </div>
-
-    <div class="sectionTitle">DIFICULDADE</div>
-
-    <div class="difficultyGrid">
-      <button class="difficultyCard" data-difficulty="easy" type="button">
-        <strong>FÁCIL</strong>
-        <span>Menos hits</span>
-        <small>Lento</small>
-      </button>
-
-      <button class="difficultyCard selected" data-difficulty="normal" type="button">
-        <strong>NORMAL</strong>
-        <span>Hits intermediários</span>
-        <small>Velocidade normal</small>
-      </button>
-
-      <button class="difficultyCard" data-difficulty="hard" type="button">
-        <strong>DIFÍCIL</strong>
-        <span>Todas as batidas</span>
-        <small>Rápido</small>
-      </button>
-
-      <button class="difficultyCard extremeCard" data-difficulty="extreme" type="button">
-        <strong>EXTREMO</strong>
-        <span>Todas as batidas + X</span>
-        <small>2× rápido</small>
-      </button>
-    </div>
-
-    <div id="difficultyInfo">
-      NORMAL · aproximadamente metade das batidas
-    </div>
-
-    <div class="sectionTitle">MODO DE JOGO</div>
-
-    <div class="modeGrid">
-      <button class="modeBtn p1" id="onePlayer" disabled type="button">
-        <strong>1 JOGADOR</strong>
-        <span>A · W · S · D</span>
-      </button>
-
-      <button class="modeBtn p2" id="twoPlayers" disabled type="button">
-        <strong>2 JOGADORES</strong>
-        <span>P1: A W S D · P2: SETAS</span>
-      </button>
-    </div>
-
-    <div id="menuStatus">Carregando personagem 3D…</div>
-
-    <button id="openLeaderboard" class="rankingOpenButton" type="button">
-      VER RANKING
-    </button>
-
   </div>
 </div>
 
+
 <div id="hud">
+
+  <button
+    id="pauseButton"
+    class="pauseButton"
+    type="button"
+    aria-label="Pausar partida"
+    title="Pausar partida (Esc)"
+  >
+    <span class="pauseIcon" aria-hidden="true">
+      <span></span><span></span>
+    </span>
+  </button>
+
 
   <div class="topHud">
     <div class="playerHud blue">
       <div class="smallLabel">P1</div>
       <div class="score" id="scoreP1">000000</div>
       <div class="combo" id="comboP1">COMBO x0</div>
+      <div class="missCounter" id="missP1">ERROS SEGUIDOS 0/15</div>
     </div>
 
     <div id="centerProgress">
@@ -129,6 +178,7 @@
       <div class="smallLabel">P2</div>
       <div class="score" id="scoreP2">000000</div>
       <div class="combo" id="comboP2">COMBO x0</div>
+      <div class="missCounter" id="missP2">ERROS SEGUIDOS 0/15</div>
     </div>
   </div>
 
@@ -154,11 +204,33 @@
       </div>
     </div>
 
+    <div class="performanceMeter" id="performanceP1" data-state="green" aria-label="Performance do jogador 1">
+      <div class="performanceHeader">
+        <span>PERFORMANCE</span>
+        <strong id="performanceStatusP1">ÓTIMA</strong>
+      </div>
+      <div class="performanceScale">
+        <div class="performanceNeedle" id="performanceNeedleP1" aria-hidden="true">▼</div>
+        <div class="performanceBar" aria-hidden="true">
+          <span class="performanceZone redZone"></span>
+          <span class="performanceZone yellowZone"></span>
+          <span class="performanceZone greenZone"></span>
+        </div>
+        <div class="performanceMarkers">
+          <span id="performanceLimitP1">10</span>
+          <span id="performanceYellowP1">6</span>
+          <span id="performanceGreenP1">3</span>
+          <span>0</span>
+        </div>
+      </div>
+    </div>
+
+
     <div class="hint">Acerte quando a nota encaixar.</div>
   </section>
 
   <section id="boardP2" class="rhythmBoard redBoard">
-    <div class="boardTitle">P2 · SETAS</div>
+    <div class="boardTitle">P2 · ← ↑ ↓ →</div>
 
     <div class="lanes">
       <div class="lane"></div>
@@ -171,11 +243,32 @@
       <div class="notesLayer" id="notesP2"></div>
 
       <div class="receptors">
-        <div class="receptor" data-player="p2" data-key="ArrowUp">↑</div>
         <div class="receptor" data-player="p2" data-key="ArrowLeft">←</div>
+        <div class="receptor" data-player="p2" data-key="ArrowUp">↑</div>
         <div class="receptor" data-player="p2" data-key="ArrowDown">↓</div>
         <div class="receptor" data-player="p2" data-key="ArrowRight">→</div>
         <div class="specialReceptor enterReceptor" data-player="p2" data-key="Enter">ENTER</div>
+      </div>
+    </div>
+
+    <div class="performanceMeter" id="performanceP2" data-state="green" aria-label="Performance do jogador 2">
+      <div class="performanceHeader">
+        <span>PERFORMANCE</span>
+        <strong id="performanceStatusP2">ÓTIMA</strong>
+      </div>
+      <div class="performanceScale">
+        <div class="performanceNeedle" id="performanceNeedleP2" aria-hidden="true">▼</div>
+        <div class="performanceBar" aria-hidden="true">
+          <span class="performanceZone redZone"></span>
+          <span class="performanceZone yellowZone"></span>
+          <span class="performanceZone greenZone"></span>
+        </div>
+        <div class="performanceMarkers">
+          <span id="performanceLimitP2">10</span>
+          <span id="performanceYellowP2">6</span>
+          <span id="performanceGreenP2">3</span>
+          <span>0</span>
+        </div>
       </div>
     </div>
 
@@ -187,28 +280,82 @@
 
 </div>
 
-<div id="countdown">3</div>
+<div id="countdown" aria-live="polite">3</div>
 
-<div id="resultOverlay" class="overlay hidden">
-  <div class="resultCard">
+<div id="completionOverlay" class="completionOverlay hidden" aria-live="assertive" aria-label="Partida concluída">
+  <div class="completionBurst" aria-hidden="true"></div>
+  <div class="completionLightning" aria-hidden="true"></div>
+  <div class="completionShockwave" aria-hidden="true"></div>
+  <div class="completionFlash" aria-hidden="true"></div>
+  <img src="./assets/ui/you-dance-logo-lateral.png" alt="You Dance" class="completionLogo" />
+  <div class="completionText">YOU DANCE!</div>
+</div>
 
-    <div class="eyebrow">PARTIDA FINALIZADA</div>
-    <h1 id="resultTitle">RESULTADO</h1>
 
-    <div id="resultGrid" class="resultGrid"></div>
+<div id="pauseOverlay" class="pauseOverlay hidden" role="dialog" aria-modal="true" aria-labelledby="pauseTitle">
+  <div class="pauseCard">
+    <div class="eyebrow">PARTIDA PAUSADA</div>
+    <h1 id="pauseTitle">PAUSA</h1>
+    <p>A partida está pausada. Pressione <b>Esc</b> ou escolha uma opção abaixo.</p>
 
-    <p id="resultStatus" class="resultStatus" role="status"></p>
-
-    <div class="resultActions">
-      <button id="openLeaderboardFromResults" type="button">
-        VER RANKING
+    <div class="pauseActions">
+      <button id="continueGame" class="continueButton" type="button">
+        CONTINUAR
       </button>
 
-      <button id="backMenu" type="button">
+      <button id="pauseBackMenu" class="menuReturnButton" type="button">
         VOLTAR AO MENU
       </button>
     </div>
+  </div>
+</div>
 
+
+
+<div id="defeatOverlay" class="defeatOverlay hidden" role="dialog" aria-modal="true" aria-labelledby="defeatTitle">
+  <div class="defeatCard">
+    <div class="eyebrow">FIM DE PARTIDA</div>
+    <h1 id="defeatTitle">PERDEU!</h1>
+    <p id="defeatMessage" class="defeatMessage">Você errou demais!</p>
+    <p id="defeatDetails" class="defeatDetails"></p>
+
+    <div class="defeatActions">
+      <button id="defeatRetry" class="retryButton" type="button">
+        TENTAR NOVAMENTE
+      </button>
+
+      <button id="defeatBackMenu" class="menuReturnButton" type="button">
+        VOLTAR AO MENU
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<div id="resultOverlay" class="overlay hidden resultOverlayYd">
+  <div class="resultCard liquidGlass victoryResultCard">
+    <div class="victoryTopBrand">
+      <img src="./assets/ui/you-dance-logo-lateral.png" alt="You Dance" class="resultMainLogo" />
+      <img src="./assets/ui/you-dance-logo-main.png" alt="You Dance" class="resultSideLogo" />
+    </div>
+
+    <h1 id="resultTitle">VITÓRIA!</h1>
+
+    <div id="resultGrid" class="resultGrid modernResultGrid"></div>
+
+    <p id="resultStatus" class="resultStatus" role="status"></p>
+
+    <div class="resultActions modernResultActions">
+      <button id="retryFromResults" class="resultPrimaryButton" type="button">
+        JOGAR NOVAMENTE
+      </button>
+      <button id="chooseMusicFromResults" class="resultSecondaryButton" type="button">
+        ESCOLHER MÚSICA
+      </button>
+      <button id="backMenu" class="resultSecondaryButton darkButton" type="button">
+        MENU PRINCIPAL
+      </button>
+    </div>
   </div>
 </div>
 
@@ -250,9 +397,19 @@
 
 <audio
   id="music"
-  preload="auto"
+  preload="metadata"
   src="./assets/audio/ragatanga.mp3"
 ></audio>
+
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.180.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.180.0/examples/jsm/"
+  }
+}
+</script>
 
 <script type="module" src="/src/main.js"></script>
 
