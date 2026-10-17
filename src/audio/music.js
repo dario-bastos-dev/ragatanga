@@ -1,77 +1,130 @@
-import {
-  state
-} from '../core/state.js';
+import '../core/state.js';
 
-/*
-  O áudio é o relógio mestre da partida:
-  o tempo de jogo é a posição da música dentro da janela do beatmap.
-*/
-export const music =
-  document.querySelector('#music');
+function playMissSound(){
 
-let musicError = false;
-
-music.addEventListener(
-  'error',
-  () => {
-    musicError = true;
+  if(!missSoundTemplates.length){
+    return;
   }
-);
 
-export function loadMusic(
-  url
+  let index =
+    Math.floor(
+      Math.random() *
+      missSoundTemplates.length
+    );
+
+  /*
+    Evita repetir exatamente o mesmo efeito duas vezes seguidas
+    quando existem outras opções disponíveis.
+  */
+  if(
+    missSoundTemplates.length > 1 &&
+    index === lastMissSoundIndex
+  ){
+    index =
+      (
+        index +
+        1 +
+        Math.floor(
+          Math.random() *
+          (missSoundTemplates.length - 1)
+        )
+      ) %
+      missSoundTemplates.length;
+  }
+
+  lastMissSoundIndex = index;
+
+  const sound =
+    missSoundTemplates[
+      index
+    ].cloneNode(true);
+
+  sound.volume = .54;
+  sound.currentTime = 0;
+
+  sound
+    .play()
+    .catch(
+      () => {
+        /* O navegador pode bloquear áudio antes da primeira interação. */
+      }
+    );
+
+}
+
+async function seekMusicTo(
+  seconds
 ){
 
-  musicError = false;
+  if(music.readyState < 1){
 
-  music.src =
-    url;
+    await new Promise(
+      resolve => {
 
-  music.load();
+        const done = () => {
+          music.removeEventListener('loadedmetadata', done);
+          resolve();
+        };
 
-}
+        music.addEventListener(
+          'loadedmetadata',
+          done,
+          { once: true }
+        );
 
-export function hasMusicError(){
+        setTimeout(done, 1200);
 
-  return musicError;
+      }
+    );
 
-}
-
-export function isMusicReady(){
-
-  return music.readyState >= 2;
-
-}
-
-export function gameTime(){
-
-  return (
-    music.currentTime -
-    state.beatmap.audioStart
-  );
-
-}
-
-/*
-  Durante a contagem regressiva a música ainda não tocou:
-  as notas já descem usando um relógio negativo até 0.
-*/
-export function currentPreviewTime(){
-
-  if(!state.preRolling){
-    return gameTime();
   }
 
-  const elapsed =
-    (
-      performance.now() -
-      state.preRollStartedAt
-    ) /
-    1000;
+  if(
+    Math.abs(music.currentTime - seconds) < .015
+  ){
+    return;
+  }
 
-  return (
-    -state.preRollDuration +
-    elapsed
+  await new Promise(
+    resolve => {
+
+      let settled = false;
+
+      const done = () => {
+
+        if(settled){
+          return;
+        }
+
+        settled = true;
+        music.removeEventListener('seeked', done);
+        resolve();
+
+      };
+
+      music.addEventListener(
+        'seeked',
+        done,
+        { once: true }
+      );
+
+      try{
+        music.currentTime = seconds;
+      }catch(error){
+        console.warn('Falha ao posicionar áudio:', error);
+        done();
+        return;
+      }
+
+      setTimeout(done, 700);
+
+    }
   );
 
 }
+
+
+Object.assign(globalThis, {
+  playMissSound,
+  seekMusicTo
+});

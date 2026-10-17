@@ -1,21 +1,13 @@
-import {
-  SONGS
-} from '../config/songs.js';
+import './state.js';
 
-import {
-  DIFFICULTIES
-} from '../config/difficulties.js';
-
-export const RECENT_MATCH_LIMIT = 10;
-
-const STORAGE_KEY = 'ragatanga.recent-matches.v1';
-
-export function loadRecentMatches(
+function loadRecentMatches(
   storage = globalThis.localStorage
 ){
 
   const serialized =
-    storage.getItem(STORAGE_KEY);
+    storage.getItem(
+      LEADERBOARD_STORAGE_KEY
+    );
 
   if(serialized === null){
     return [];
@@ -39,7 +31,7 @@ export function loadRecentMatches(
 
 }
 
-export function recordMatch(
+function recordMatch(
   match,
   storage = globalThis.localStorage
 ){
@@ -64,7 +56,7 @@ export function recordMatch(
   );
 
   storage.setItem(
-    STORAGE_KEY,
+    LEADERBOARD_STORAGE_KEY,
     JSON.stringify(recentMatches)
   );
 
@@ -72,9 +64,7 @@ export function recordMatch(
 
 }
 
-export function rankPerformances(
-  matches
-){
+function rankPerformances(matches){
 
   return matches
     .flatMap(
@@ -99,9 +89,7 @@ export function rankPerformances(
 
 }
 
-function isValidMatch(
-  match
-){
+function isValidMatch(match){
 
   if(
     !match ||
@@ -138,3 +126,10 @@ function isValidMatch(
   );
 
 }
+
+Object.assign(globalThis, {
+  loadRecentMatches,
+  recordMatch,
+  rankPerformances,
+  isValidMatch
+});

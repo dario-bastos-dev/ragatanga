@@ -1,48 +1,30 @@
-import {
-  state,
-  currentSong,
-  currentDifficulty
-} from '../core/state.js';
+import '../core/state.js';
 
-import {
-  seededRandom
-} from '../core/utils.js';
-
-/*
-  Gera a sequência de notas da partida a partir das batidas do beatmap:
-  coluna de cada jogador por batida e, no EXTREMO, os especiais.
-*/
-export function buildDifficultyEvents(){
+function buildDifficultyEvents(){
 
   const config =
-    currentDifficulty();
-
-  const beats =
-    state.beatmap.beats;
-
-  const song =
-    currentSong();
+    DIFFICULTIES[selectedDifficulty];
 
   const selectedBeats = [];
 
   for(
     let i = 0;
-    i < beats.length;
+    i < beatmap.beats.length;
     i += config.beatStep
   ){
 
     selectedBeats.push({
       sourceBeatIndex: i,
-      time: beats[i]
+      time: beatmap.beats[i]
     });
 
   }
 
   const randomP1 =
-    seededRandom(song.seedP1);
+    seededRandom(SONGS[selectedSong].seedP1);
 
   const randomP2 =
-    seededRandom(song.seedP2);
+    seededRandom(SONGS[selectedSong].seedP2);
 
   let previousP1 = -1;
   let previousP2 = -1;
@@ -115,14 +97,14 @@ export function buildDifficultyEvents(){
 
     for(
       let i = 7;
-      i < beats.length - 1;
+      i < beatmap.beats.length - 1;
       i += 8
     ){
 
       const time =
         (
-          beats[i] +
-          beats[i + 1]
+          beatmap.beats[i] +
+          beatmap.beats[i + 1]
         ) /
         2;
 
@@ -141,3 +123,156 @@ export function buildDifficultyEvents(){
   };
 
 }
+
+function makePlayer(
+  id,
+  keys,
+  notesLayerId,
+  eventSet
+){
+
+  const layer =
+    document.querySelector(
+      '#' + notesLayerId
+    );
+
+  layer.innerHTML = '';
+
+  const notes =
+    eventSet.regular.map(
+      (event,index) => {
+
+        const lane =
+          id === 'p1'
+            ? event.p1
+            : event.p2;
+
+        const key =
+          keys[lane];
+
+        const element =
+          document.createElement(
+            'div'
+          );
+
+        element.className =
+          'note';
+
+        element.textContent =
+          id === 'p1'
+            ? P1_KEYS[lane]
+            : P2_LABELS[lane];
+
+        element.style.left =
+          (
+            DIFFICULTIES[selectedDifficulty].special
+              ? [10,30,50,70][lane]
+              : LANE_X[lane]
+          ) + '%';
+
+        element.style.display =
+          'none';
+
+        layer.appendChild(element);
+
+        return {
+          index,
+          type: 'regular',
+          time: event.time,
+          lane,
+          key,
+          resolved: false,
+          element
+        };
+
+      }
+    );
+
+  const specials = [];
+
+  if(
+    DIFFICULTIES[selectedDifficulty]
+      .special
+  ){
+
+    for(
+      const event
+      of eventSet.special
+    ){
+
+      /*
+        No EXTREMO os dois jogadores recebem o especial
+        nos mesmos tempos musicais, porém com teclas próprias:
+        P1 = X
+        P2 = Enter
+      */
+      const specialKey =
+        id === 'p1'
+          ? 'X'
+          : 'Enter';
+
+      const specialLabel =
+        id === 'p1'
+          ? 'X'
+          : 'ENTER';
+
+      const element =
+        document.createElement(
+          'div'
+        );
+
+      element.className =
+        id === 'p1'
+          ? 'specialNote'
+          : 'specialNote enterSpecialNote';
+
+      element.textContent =
+        specialLabel;
+
+      element.style.left =
+        '90%';
+
+      element.style.display =
+        'none';
+
+      layer.appendChild(element);
+
+      specials.push({
+        type: 'special',
+        time: event.time,
+        key: specialKey,
+        resolved: false,
+        element
+      });
+
+    }
+
+  }
+
+  return {
+    id,
+    keys,
+    notes,
+    specials,
+    noteIndex: 0,
+    specialIndex: 0,
+    score: 0,
+    combo: 0,
+    maxCombo: 0,
+    consecutiveMisses: 0,
+    results: {
+      perfect: 0,
+      great: 0,
+      good: 0,
+      miss: 0,
+      special: 0
+    }
+  };
+
+}
+
+
+Object.assign(globalThis, {
+  buildDifficultyEvents,
+  makePlayer
+});

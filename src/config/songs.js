@@ -1,32 +1,13 @@
-import ragatangaBeatmap
-  from '../beatmaps/ragatanga.json';
+import ragatangaBeatmap from '../beatmaps/ragatanga.js';
+import thrillerBeatmap from '../beatmaps/thriller.js';
+import ymcaBeatmap from '../beatmaps/ymca.js';
+import macarenaBeatmap from '../beatmaps/macarena.js';
 
-import thrillerBeatmap
-  from '../beatmaps/thriller.json';
-
-import ymcaBeatmap
-  from '../beatmaps/ymca.json';
-
-import macarenaBeatmap
-  from '../beatmaps/macarena.json';
-
-/*
-  Cada música traz seu beatmap, o arquivo de áudio e as sementes
-  que definem a coreografia (sequência de notas) de cada jogador.
-  A janela de áudio (audioStart/audioEnd) vem do próprio beatmap.
-
-  dance (opcional): arquivo com os clips "dance" e "idle" da coreografia
-  (gerado por scripts/build-dance.mjs). Sem ele, a música usa o clip
-  Samba Dancing do FBX.
-
-  danceBeats (opcional): o clip vira um loop de N batidas que segue as
-  batidas do beatmap (acelera e desacelera junto com a música). Sem ele,
-  o clip segue o relógio da partida.
-*/
 export const SONGS = {
   ragatanga: {
     title: 'RAGATANGA',
     audio: './assets/audio/ragatanga.mp3',
+    background: './assets/backgrounds/ragatanga.png',
     beatmap: ragatangaBeatmap,
     seedP1: 104729,
     seedP2: 130363
@@ -35,6 +16,7 @@ export const SONGS = {
   thriller: {
     title: 'THRILLER',
     audio: './assets/audio/thriller.mp3',
+    background: './assets/backgrounds/thriller.jpeg',
     beatmap: thrillerBeatmap,
     seedP1: 7919,
     seedP2: 15485863,
@@ -44,6 +26,7 @@ export const SONGS = {
   ymca: {
     title: 'YMCA',
     audio: './assets/audio/ymca.mp3',
+    background: './assets/backgrounds/ymca.png',
     beatmap: ymcaBeatmap,
     seedP1: 27644437,
     seedP2: 49979687,
@@ -55,6 +38,7 @@ export const SONGS = {
   macarena: {
     title: 'MACARENA',
     audio: './assets/audio/macarena.mp3',
+    background: './assets/backgrounds/macarena.png',
     beatmap: macarenaBeatmap,
     seedP1: 86028121,
     seedP2: 32452843,
