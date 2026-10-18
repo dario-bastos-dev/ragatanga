@@ -48,6 +48,62 @@ export const THRILLER_CHARACTER_URLS = {
   p2: './assets/characters/zombie-girl.fbx'
 };
 
+/*
+  Skins por música. `textures` aponta a pasta das imagens quando o FBX não
+  as embute e as referencia por um caminho que não existe no jogo.
+*/
+export const SONG_CHARACTERS = {
+  ragatanga: {
+    label: 'Homem-Aranha',
+    p1: {
+      url: './assets/characters/ragatanga/the-amazing-spider-man-2-spider-man/source/the-amazing-spider-man-2-rigged-model/source/Amazing Spider Man 2 Rigged.fbx'
+    },
+    p2: {
+      url: './assets/characters/ragatanga/spider-man-far-from-home-stealth-suit/source/STEALTH SUIT.fbx',
+      textures: './assets/characters/ragatanga/spider-man-far-from-home-stealth-suit/textures/'
+    }
+  },
+
+  macarena: {
+    label: 'Deadpool',
+    p1: {
+      url: './assets/characters/macarena/dead-pool/source/DeadPool.fbx'
+    },
+    /*
+      O FBX da Lady Deadpool vem com adereços do jogo de origem
+      (helicóptero, escada, bombas, bazuca e katanas reserva soltas).
+      Ficam só o corpo e as katanas das costas.
+    */
+    p2: {
+      url: './assets/characters/macarena/lady-deadpooltexturedrigged/source/hero_deadpool01_S02.fbx',
+      textures: './assets/characters/macarena/lady-deadpooltexturedrigged/textures/',
+      textureFiles: [
+        'hero_deadpool01_s02_01.png',
+        'hero_deadpool01_s02_02.png'
+      ],
+      keepMeshes: ['hero_deadpool01_s02'],
+      removeBones: [
+        'sword_Bone001',
+        'sword_Bone002',
+        'sword_Bone005',
+        'sword_Bone006'
+      ]
+    }
+  },
+
+  ymca: {
+    label: 'Heathers e Pete',
+    /* O FBX chega num quadro da dança embutida; a pose de bind é a T-pose. */
+    p1: {
+      url: './assets/characters/ymca/heathers-ymca/source/Heather 001 YMCA.fbx',
+      restoreBindPose: true
+    },
+    p2: {
+      url: './assets/characters/ymca/pete/source/Ymca Dance.fbx'
+    }
+  }
+};
+
 export const COMPLETION_CELEBRATION_SECONDS = 7;
 
 export const WASTED_REVEAL_SECONDS = 2;

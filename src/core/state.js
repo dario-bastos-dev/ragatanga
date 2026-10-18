@@ -101,6 +101,11 @@ globalThis.thrillerModels = {
 
 globalThis.thrillerCharacterErrors = new Set();
 
+/* Skins de SONG_CHARACTERS: { [songId]: { p1, p2 } } e erros "songId:p1". */
+globalThis.songCharacterModels = {};
+
+globalThis.songCharacterErrors = new Set();
+
 globalThis.thrillerMichaelSource = null;
 
 globalThis.thrillerMichaelPreparing = false;

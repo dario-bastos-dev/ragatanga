@@ -578,19 +578,6 @@ function getDanceClips(
   const file =
     danceFiles[selectedSong];
 
-  if(!file){
-
-    /*
-      As músicas sem coreografia empacotada continuam usando o clip Samba
-      do personagem padrão. As skins de Thriller nunca passam por este ramo.
-    */
-    return {
-      dance: baseModel.animations[0],
-      idle: null
-    };
-
-  }
-
   let perTemplate =
     danceClipCache.get(template);
 
@@ -600,6 +587,36 @@ function getDanceClips(
       template,
       perTemplate
     );
+  }
+
+  if(!file){
+
+    /*
+      As músicas sem coreografia empacotada usam o clip Samba do personagem
+      padrão. Ele guarda rotações locais do rig do Samba, então outras
+      skins recebem uma versão retargetada. A fonte é um clone para o
+      template padrão não ficar parado no último quadro do mixer.
+    */
+    if(template === baseModel){
+      return {
+        dance: baseModel.animations[0],
+        idle: null
+      };
+    }
+
+    perTemplate[selectedSong] ??= {
+      dance:
+        retargetMixamoMotionClip(
+          SkeletonUtils.clone(baseModel),
+          baseModel.animations[0],
+          template,
+          `${selectedSong}-dance`
+        ),
+      idle: null
+    };
+
+    return perTemplate[selectedSong];
+
   }
 
   perTemplate[selectedSong] ??=
@@ -732,7 +749,10 @@ function getCharacterTemplate(
     return thrillerModels[playerId];
   }
 
-  return baseModel;
+  return (
+    getSongCharacter(selectedSong, playerId) ||
+    baseModel
+  );
 
 }
 
@@ -970,7 +990,8 @@ function createP1(
     'p1',
     {
       preserveSkin:
-        selectedSong === 'thriller'
+        selectedSong === 'thriller' ||
+        template !== baseModel
     }
   );
 
@@ -1026,7 +1047,8 @@ function createP2(
     'p2',
     {
       preserveSkin:
-        selectedSong === 'thriller'
+        selectedSong === 'thriller' ||
+        template !== baseModel
     }
   );
 

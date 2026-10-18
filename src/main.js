@@ -8,6 +8,7 @@ import './core/leaderboard.js';
 import './ui/leaderboard.js';
 import './audio/music.js';
 import './scene/thriller-skin.js';
+import './scene/song-skins.js';
 import './scene/characters.js';
 import './scene/dancers.js';
 import './gameplay/chart.js';

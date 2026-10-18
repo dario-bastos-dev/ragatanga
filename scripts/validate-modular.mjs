@@ -16,6 +16,7 @@ const expected = [
   'src/scene/characters.js',
   'src/scene/dancers.js',
   'src/scene/thriller-skin.js',
+  'src/scene/song-skins.js',
   'src/gameplay/chart.js',
   'src/gameplay/input.js',
   'src/gameplay/judge.js',

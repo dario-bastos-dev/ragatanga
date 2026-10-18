@@ -270,6 +270,7 @@ function canStartSelectedSong(){
   const completionReady = Boolean(completionClips.p1 && completionClips.p2);
   const gameplayIdleReady = Boolean(menuIdleClip);
   const thrillerSkinReady = selectedSong !== 'thriller' || Boolean(thrillerModels.p1 && thrillerModels.p2);
+  const songSkinReady = songCharactersReady(selectedSong);
   const outcomeAnimationsReady = Boolean(defeatClip && victoryClip);
 
   return (
@@ -281,6 +282,7 @@ function canStartSelectedSong(){
     gameplayIdleReady &&
     outcomeAnimationsReady &&
     thrillerSkinReady &&
+    songSkinReady &&
     !musicError &&
     !characterError
   );
@@ -552,6 +554,7 @@ function selectSong(id){
   music.load();
 
   loadSongDance(id);
+  loadSongCharacters(id);
 
   updateDifficultyInfo();
   updateMenuPreviewText(song);
@@ -665,6 +668,9 @@ function updateMenuAvailability(){
       thrillerModels.p2
     );
 
+  const songSkinReady =
+    songCharactersReady(selectedSong);
+
   const outcomeAnimationsReady =
     Boolean(
       defeatClip &&
@@ -678,7 +684,8 @@ function updateMenuAvailability(){
     preMatchReady &&
     completionReady &&
     outcomeAnimationsReady &&
-    thrillerSkinReady;
+    thrillerSkinReady &&
+    songSkinReady;
 
   one.disabled = false;
   two.disabled = false;
@@ -709,6 +716,8 @@ function updateMenuAvailability(){
       (!thrillerModels.p1 || !thrillerModels.p2)
     ){
       status = 'Carregando skins Michael e ZombieGirl…';
+    }else if(!songSkinReady){
+      status = `Carregando skins ${SONG_CHARACTERS[selectedSong].label}…`;
     }else if(danceErrors.has(selectedSong)){
       status = 'Não foi possível carregar a coreografia.';
     }else if(musicError){

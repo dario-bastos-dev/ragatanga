@@ -153,111 +153,8 @@ function buildAutoRiggedThrillerSkin(
 
   const samples = [];
 
-  for(const mesh of referenceMeshes){
-
-    const positions =
-      mesh.geometry.getAttribute('position');
-
-    const skinIndex =
-      mesh.geometry.getAttribute('skinIndex');
-
-    const skinWeight =
-      mesh.geometry.getAttribute('skinWeight');
-
-    if(
-      !positions ||
-      !skinIndex ||
-      !skinWeight
-    ){
-      continue;
-    }
-
-    const sourceBones =
-      mesh.skeleton.bones;
-
-    const point =
-      new THREE.Vector3();
-
-    for(
-      let vertex = 0;
-      vertex < positions.count;
-      vertex++
-    ){
-
-      point
-        .fromBufferAttribute(
-          positions,
-          vertex
-        )
-        .applyMatrix4(mesh.matrixWorld)
-        .applyMatrix4(rigRootInverse);
-
-      const sourceIndices = [
-        skinIndex.getX(vertex),
-        skinIndex.getY(vertex),
-        skinIndex.getZ(vertex),
-        skinIndex.getW(vertex)
-      ];
-
-      const sourceWeights = [
-        skinWeight.getX(vertex),
-        skinWeight.getY(vertex),
-        skinWeight.getZ(vertex),
-        skinWeight.getW(vertex)
-      ];
-
-      const indices = [];
-      const weights = [];
-
-      for(let slot = 0; slot < 4; slot++){
-
-        const weight =
-          sourceWeights[slot] || 0;
-
-        if(weight <= 0){
-          continue;
-        }
-
-        const sourceBone =
-          sourceBones[sourceIndices[slot]];
-
-        if(!sourceBone){
-          continue;
-        }
-
-        const mappedIndex =
-          canonicalIndexByName.get(
-            sourceBone.name
-          );
-
-        if(mappedIndex == null){
-          continue;
-        }
-
-        indices.push(mappedIndex);
-        weights.push(weight);
-
-      }
-
-      if(indices.length){
-        samples.push({
-          x: point.x,
-          y: point.y,
-          z: point.z,
-          indices,
-          weights
-        });
-      }
-
-    }
-
-  }
-
-  if(!samples.length){
-    throw new Error(
-      'Não foi possível obter pesos de skin do personagem base.'
-    );
-  }
+  const grid =
+    new Map();
 
   const cellSize =
     Math.max(
@@ -272,34 +169,154 @@ function buildAutoRiggedThrillerSkin(
   ) =>
     `${x}|${y}|${z}`;
 
-  const grid =
-    new Map();
+  /*
+    Amostras do corpo de referência (posição + pesos). São recalculadas
+    depois que o rig é posado na A-pose do Michael, para que os pesos
+    transferidos venham de um corpo na MESMA pose da malha.
+  */
+  const collectReferenceSamples = () => {
 
-  for(const sample of samples){
+    samples.length = 0;
+    grid.clear();
 
-    const cx =
-      Math.floor(sample.x / cellSize);
 
-    const cy =
-      Math.floor(sample.y / cellSize);
+    for(const mesh of referenceMeshes){
 
-    const cz =
-      Math.floor(sample.z / cellSize);
+      const positions =
+        mesh.geometry.getAttribute('position');
 
-    const key =
-      cellKey(cx, cy, cz);
+      const skinIndex =
+        mesh.geometry.getAttribute('skinIndex');
 
-    let bucket =
-      grid.get(key);
+      const skinWeight =
+        mesh.geometry.getAttribute('skinWeight');
 
-    if(!bucket){
-      bucket = [];
-      grid.set(key, bucket);
+      if(
+        !positions ||
+        !skinIndex ||
+        !skinWeight
+      ){
+        continue;
+      }
+
+      const sourceBones =
+        mesh.skeleton.bones;
+
+      const point =
+        new THREE.Vector3();
+
+      for(
+        let vertex = 0;
+        vertex < positions.count;
+        vertex++
+      ){
+
+        /* Posição já deformada: acompanha o rig quando ele é posado. */
+        mesh
+          .getVertexPosition(
+            vertex,
+            point
+          )
+          .applyMatrix4(mesh.matrixWorld)
+          .applyMatrix4(rigRootInverse);
+
+        const sourceIndices = [
+          skinIndex.getX(vertex),
+          skinIndex.getY(vertex),
+          skinIndex.getZ(vertex),
+          skinIndex.getW(vertex)
+        ];
+
+        const sourceWeights = [
+          skinWeight.getX(vertex),
+          skinWeight.getY(vertex),
+          skinWeight.getZ(vertex),
+          skinWeight.getW(vertex)
+        ];
+
+        const indices = [];
+        const weights = [];
+
+        for(let slot = 0; slot < 4; slot++){
+
+          const weight =
+            sourceWeights[slot] || 0;
+
+          if(weight <= 0){
+            continue;
+          }
+
+          const sourceBone =
+            sourceBones[sourceIndices[slot]];
+
+          if(!sourceBone){
+            continue;
+          }
+
+          const mappedIndex =
+            canonicalIndexByName.get(
+              sourceBone.name
+            );
+
+          if(mappedIndex == null){
+            continue;
+          }
+
+          indices.push(mappedIndex);
+          weights.push(weight);
+
+        }
+
+        if(indices.length){
+          samples.push({
+            x: point.x,
+            y: point.y,
+            z: point.z,
+            indices,
+            weights
+          });
+        }
+
+      }
+
     }
 
-    bucket.push(sample);
+    if(!samples.length){
+      throw new Error(
+        'Não foi possível obter pesos de skin do personagem base.'
+      );
+    }
 
-  }
+
+    for(const sample of samples){
+
+      const cx =
+        Math.floor(sample.x / cellSize);
+
+      const cy =
+        Math.floor(sample.y / cellSize);
+
+      const cz =
+        Math.floor(sample.z / cellSize);
+
+      const key =
+        cellKey(cx, cy, cz);
+
+      let bucket =
+        grid.get(key);
+
+      if(!bucket){
+        bucket = [];
+        grid.set(key, bucket);
+      }
+
+      bucket.push(sample);
+
+    }
+
+  };
+
+  collectReferenceSamples();
 
   const hipsIndex =
     canonicalIndexByName.get(
@@ -599,7 +616,7 @@ function buildAutoRiggedThrillerSkin(
       return false;
     }
 
-    const bone = canonicalBones[index];
+    const bone = jointNode(canonicalBones[index]);
 
     /* targetRigPoint está no espaço local de rigRoot. */
     const targetWorld =
@@ -617,6 +634,108 @@ function buildAutoRiggedThrillerSkin(
     }else{
       bone.position.copy(targetWorld);
     }
+
+    bone.updateMatrixWorld(true);
+    return true;
+  };
+
+  /*
+    O rig base está em T-pose, mas a malha do Michael está em A-pose. As
+    animações são deltas relativos à T-pose: se a malha for presa a ossos
+    ainda horizontais, cada pose soma os ~36° da A-pose e os braços entram
+    no tronco. Por isso giramos a cadeia do braço até a A-pose da malha só
+    durante o bind e depois devolvemos as rotações originais (T-pose).
+  */
+  const restQuaternions =
+    new Map();
+
+  /*
+    O FBXLoader duplica cada osso Mixamo (nó externo + filho homônimo com
+    offset zero). A animação gira o nó externo, então é ele que posamos.
+  */
+  const jointNode = node => {
+    while(node.parent?.name === node.name){
+      node = node.parent;
+    }
+    return node;
+  };
+
+  const poseBoneTowards = (
+    name,
+    childName,
+    targetRigPoint
+  ) => {
+    const index = canonicalIndexByName.get(name);
+    const childIndex = canonicalIndexByName.get(childName);
+
+    if(index == null || childIndex == null){
+      return false;
+    }
+
+    const bone = jointNode(canonicalBones[index]);
+    const child = jointNode(canonicalBones[childIndex]);
+
+    let ancestor = child.parent;
+    while(ancestor && ancestor !== bone){
+      ancestor = ancestor.parent;
+    }
+
+    if(!ancestor){
+      return setBoneRigPosition(childName, targetRigPoint);
+    }
+
+    if(!restQuaternions.has(bone)){
+      restQuaternions.set(bone, bone.quaternion.clone());
+    }
+
+    bone.updateMatrixWorld(true);
+
+    const pivot =
+      bone.getWorldPosition(new THREE.Vector3());
+
+    const targetWorld =
+      targetRigPoint
+        .clone()
+        .applyMatrix4(rigRoot.matrixWorld);
+
+    /* Comprimento do Michael, direção da T-pose original. */
+    const length =
+      pivot.distanceTo(targetWorld) /
+      bone.getWorldScale(new THREE.Vector3()).x;
+
+    if(child.position.lengthSq() > 1e-12){
+      child.position.setLength(length);
+    }
+
+    bone.updateMatrixWorld(true);
+
+    const current =
+      child
+        .getWorldPosition(new THREE.Vector3())
+        .sub(pivot)
+        .normalize();
+
+    const desired =
+      targetWorld
+        .sub(pivot)
+        .normalize();
+
+    const worldDelta =
+      new THREE.Quaternion()
+        .setFromUnitVectors(current, desired);
+
+    const parentWorld =
+      bone.parent
+        ? bone.parent.getWorldQuaternion(new THREE.Quaternion())
+        : new THREE.Quaternion();
+
+    bone.quaternion.premultiply(
+      parentWorld
+        .clone()
+        .invert()
+        .multiply(worldDelta)
+        .multiply(parentWorld)
+    );
 
     bone.updateMatrixWorld(true);
     return true;
@@ -767,10 +886,9 @@ function buildAutoRiggedThrillerSkin(
     estática do Michael, que chega em uma A-pose bem definida:
       clavícula -> ombro (Arm) -> cotovelo (ForeArm) -> punho (Hand).
 
-    IMPORTANTE: preservamos os quaternions/rest axes originais do Mixamo.
-    Mudamos apenas POSIÇÃO dos pivôs. O retargetPackedClips já transfere as
-    rotações em world-space relativas à rest pose; portanto não devemos
-    "girar o rig para caber na malha" antes da animação.
+    IMPORTANTE: o retargetPackedClips transfere rotações relativas à T-pose.
+    A cadeia é girada até a A-pose só durante o bind (poseBoneTowards) e
+    volta aos quaternions originais do Mixamo logo depois.
   */
 
   const median = values => {
@@ -899,17 +1017,20 @@ function buildAutoRiggedThrillerSkin(
       shoulder
     );
 
-    setBoneRigPosition(
+    poseBoneTowards(
+      `${prefix}Shoulder`,
       `${prefix}Arm`,
       arm
     );
 
-    setBoneRigPosition(
+    poseBoneTowards(
+      `${prefix}Arm`,
       `${prefix}ForeArm`,
       foreArm
     );
 
-    setBoneRigPosition(
+    poseBoneTowards(
+      `${prefix}ForeArm`,
       `${prefix}Hand`,
       hand
     );
@@ -937,6 +1058,7 @@ function buildAutoRiggedThrillerSkin(
   fitArmToMichael('Left');
   fitArmToMichael('Right');
   rigRoot.updateMatrixWorld(true);
+  collectReferenceSamples();
 
   /*
     Pesos exclusivos dos braços — v2.9
@@ -1339,7 +1461,40 @@ function buildAutoRiggedThrillerSkin(
   const pointVector =
     new THREE.Vector3();
 
+  /*
+    Região do ombro/ombreira: pesos copiados do corpo de referência já
+    posado na A-pose do Michael (transição suave feita pelo artista entre
+    tronco, clavícula e braço).
+  */
+  const SHOULDER_ZONE = {
+    outwardMin: 0.04,
+    outwardMax: 0.17,
+    heightMin: 0.68,
+    heightMax: 0.90
+  };
+
+  const inShoulderZone = point => {
+    const outward =
+      Math.abs(point.x - michaelCenterX) /
+      michaelHeight;
+
+    const height =
+      (point.y - michaelBottomY) /
+      michaelHeight;
+
+    return (
+      outward >= SHOULDER_ZONE.outwardMin &&
+      outward <= SHOULDER_ZONE.outwardMax &&
+      height >= SHOULDER_ZONE.heightMin &&
+      height <= SHOULDER_ZONE.heightMax
+    );
+  };
+
   const anatomicalWeights = point => {
+
+    if(inShoulderZone(point)){
+      return nearestWeights(point);
+    }
 
     const dedicatedArmWeights =
       michaelArmWeights(point);
@@ -1778,6 +1933,225 @@ function buildAutoRiggedThrillerSkin(
     geometry.getAttribute('normal').needsUpdate = true;
   };
 
+  /*
+    Manga até o punho
+    -----------------
+    No FBX a manga vermelha termina no cotovelo e o antebraço usa uma peça
+    de pele do atlas (bem mais fina que a manga). Para a jaqueta do Thriller,
+    os vértices do antebraço passam a amostrar a segunda peça de manga do
+    atlas e são engrossados em torno do próprio eixo até a largura da manga.
+    UVs em fração do atlas 512x256; v cresce para cima.
+  */
+  const FOREARM_SKIN_UV = {
+    uMin: 188 / 512,
+    uMax: 254 / 512,
+    vElbow: 1 - 148 / 256,
+    vWrist: 1 - 230 / 256
+  };
+
+  const SLEEVE_UV = {
+    uMin: 196 / 512,
+    uMax: 250 / 512,
+    vElbow: 1 - 64 / 256,
+    vWrist: 1 - 104 / 256
+  };
+
+  const SLEEVE_THICKNESS = 1.35;
+
+  const extendMichaelSleeves = geometry => {
+
+    const positions = geometry.getAttribute('position');
+    const uvs = geometry.getAttribute('uv');
+
+    if(!positions || !uvs){
+      return;
+    }
+
+    const sides = new Map();
+    const point = new THREE.Vector3();
+
+    for(let vertex = 0; vertex < positions.count; vertex++){
+
+      const u = uvs.getX(vertex);
+      const v = uvs.getY(vertex);
+
+      if(
+        u < FOREARM_SKIN_UV.uMin ||
+        u > FOREARM_SKIN_UV.uMax ||
+        v > FOREARM_SKIN_UV.vElbow ||
+        v < FOREARM_SKIN_UV.vWrist
+      ){
+        continue;
+      }
+
+      point.fromBufferAttribute(positions, vertex);
+
+      const outward =
+        Math.abs(point.x - michaelCenterX) /
+        michaelHalfSpan;
+
+      const height =
+        (point.y - michaelBottomY) /
+        michaelHeight;
+
+      /* Só os braços usam essa peça; a faixa evita tocar pernas/tornozelos. */
+      if(outward < 0.35 || height < 0.52 || height > 0.82){
+        continue;
+      }
+
+      const side = Math.sign(point.x - michaelCenterX);
+
+      if(!sides.has(side)){
+        sides.set(side, []);
+      }
+
+      sides.get(side).push(vertex);
+
+    }
+
+    const axisStart = new THREE.Vector3();
+    const axisEnd = new THREE.Vector3();
+    const axis = new THREE.Vector3();
+    const offset = new THREE.Vector3();
+
+    for(const [side, vertices] of sides){
+
+      const guide =
+        [...michaelArmGuides.values()]
+          .find(item => item.sideSign === side);
+
+      if(!guide || vertices.length < 6){
+        continue;
+      }
+
+      /* Eixo real do antebraço: centroides da metade do cotovelo e do punho. */
+      const direction =
+        guide.hand.clone().sub(guide.foreArm).normalize();
+
+      const projected =
+        vertices
+          .map(vertex => ({
+            vertex,
+            along:
+              point
+                .fromBufferAttribute(positions, vertex)
+                .sub(guide.foreArm)
+                .dot(direction)
+          }))
+          .sort((a, b) => a.along - b.along);
+
+      const middle = Math.floor(projected.length / 2);
+
+      const centroid = (items, target) => {
+        target.set(0, 0, 0);
+        for(const { vertex } of items){
+          target.add(point.fromBufferAttribute(positions, vertex));
+        }
+        return target.divideScalar(items.length);
+      };
+
+      centroid(projected.slice(0, middle), axisStart);
+      centroid(projected.slice(middle), axisEnd);
+      axis.subVectors(axisEnd, axisStart).normalize();
+
+      for(const { vertex } of projected){
+
+        point.fromBufferAttribute(positions, vertex);
+        offset.subVectors(point, axisStart);
+
+        const along = offset.dot(axis);
+        offset.addScaledVector(axis, -along);
+
+        point
+          .copy(axisStart)
+          .addScaledVector(axis, along)
+          .addScaledVector(offset, SLEEVE_THICKNESS);
+
+        positions.setXYZ(vertex, point.x, point.y, point.z);
+
+        const u =
+          (uvs.getX(vertex) - FOREARM_SKIN_UV.uMin) /
+          (FOREARM_SKIN_UV.uMax - FOREARM_SKIN_UV.uMin);
+
+        const v =
+          (uvs.getY(vertex) - FOREARM_SKIN_UV.vElbow) /
+          (FOREARM_SKIN_UV.vWrist - FOREARM_SKIN_UV.vElbow);
+
+        uvs.setXY(
+          vertex,
+          THREE.MathUtils.lerp(SLEEVE_UV.uMin, SLEEVE_UV.uMax, u),
+          THREE.MathUtils.lerp(SLEEVE_UV.vElbow, SLEEVE_UV.vWrist, v)
+        );
+
+      }
+
+    }
+
+    positions.needsUpdate = true;
+    uvs.needsUpdate = true;
+
+  };
+
+  /*
+    A ombreira do FBX é um bloco plano (~0.85 da altura) que termina num
+    degrau de ~7% da altura sobre o braço. Em A-pose o degrau some na linha
+    do braço; com o braço abaixado vira uma ponta. Arredondamos o bloco:
+    o excesso acima do topo do braço diminui em direção à ponta do ombro.
+  */
+  const SHOULDER_PAD = {
+    base: 0.775,
+    inner: 0.075,
+    outer: 0.125,
+    limit: 0.145,
+    flatten: 0.6
+  };
+
+  const softenShoulderPads = geometry => {
+
+    const positions = geometry.getAttribute('position');
+
+    if(!positions){
+      return;
+    }
+
+    const point = new THREE.Vector3();
+    const baseY = michaelBottomY + michaelHeight * SHOULDER_PAD.base;
+
+    for(let vertex = 0; vertex < positions.count; vertex++){
+
+      point.fromBufferAttribute(positions, vertex);
+
+      const outward =
+        Math.abs(point.x - michaelCenterX) /
+        michaelHeight;
+
+      if(
+        point.y <= baseY ||
+        outward < SHOULDER_PAD.inner - 0.01 ||
+        outward > SHOULDER_PAD.limit
+      ){
+        continue;
+      }
+
+      const flatten =
+        SHOULDER_PAD.flatten *
+        THREE.MathUtils.smoothstep(
+          outward,
+          SHOULDER_PAD.inner,
+          SHOULDER_PAD.outer
+        );
+
+      positions.setY(
+        vertex,
+        baseY + (point.y - baseY) * (1 - flatten)
+      );
+
+    }
+
+    positions.needsUpdate = true;
+
+  };
+
   const newMeshes = [];
 
   for(const sourceMesh of michaelMeshes){
@@ -1792,6 +2166,9 @@ function buildAutoRiggedThrillerSkin(
     geometry.applyMatrix4(
       fitMatrix
     );
+
+    extendMichaelSleeves(geometry);
+    softenShoulderPads(geometry);
 
     /* Mantém a silhueta original, mas remove o aspecto triangular/facetado. */
     smoothNormalsAcrossPositionSeams(
@@ -1984,6 +2361,11 @@ function buildAutoRiggedThrillerSkin(
       mesh.matrixWorld.clone()
     );
     mesh.normalizeSkinWeights();
+  }
+
+  /* Bind feito em A-pose; o template volta à T-pose que as animações esperam. */
+  for(const [bone, quaternion] of restQuaternions){
+    bone.quaternion.copy(quaternion);
   }
 
   /* O corpo Samba vira apenas o rig invisível por baixo da skin. */
