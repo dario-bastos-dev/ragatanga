@@ -22,6 +22,26 @@ body{position:relative}
   background-size:cover
 }
 
+.stageBackgroundVideo{
+  position:absolute;
+  inset:0;
+  z-index:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:center center;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transition:opacity .28s ease;
+  background:#090b0d;
+}
+
+.stageBackgroundVideo.active{
+  opacity:1;
+  visibility:visible;
+}
+
 #game canvas{
   position:absolute;
   inset:0;
@@ -1326,17 +1346,17 @@ body.completion-celebration .pauseButton{
 @keyframes youDanceEntrance{
   0%{transform:scale(.35) rotate(-7deg);opacity:0;filter:blur(8px)}
   58%{transform:scale(1.18) rotate(2deg);opacity:1;filter:blur(0)}
-  76%{transform:scale(.94) rotate(-1deg)}
-  100%{transform:scale(1) rotate(0)}
+  76%{transform:scale(.94) rotate(-1deg);opacity:1;filter:blur(0)}
+  100%{transform:scale(1) rotate(0);opacity:1;filter:blur(0)}
 }
 
 @keyframes youDanceEuphoria{
-  0%{transform:translate(0,0) rotate(0) scale(1)}
+  0%{transform:translate(0,0) rotate(0) scale(1);opacity:1}
   20%{transform:translate(-5px,2px) rotate(-.7deg) scale(1.015)}
   40%{transform:translate(5px,-3px) rotate(.8deg) scale(.995)}
   60%{transform:translate(-3px,-2px) rotate(-.5deg) scale(1.01)}
   80%{transform:translate(4px,3px) rotate(.6deg) scale(1.005)}
-  100%{transform:translate(0,0) rotate(0) scale(1)}
+  100%{transform:translate(0,0) rotate(0) scale(1);opacity:1}
 }
 
 @keyframes completionWorldShake{
@@ -1384,7 +1404,7 @@ body.completion-celebration .pauseButton{
 .menuOverlayYd{
   place-items:stretch;
   background:
-    linear-gradient(90deg,rgba(4,8,18,.08) 0%,rgba(4,8,18,.16) 35%,rgba(4,8,18,.55) 100%),
+    linear-gradient(90deg,rgba(4,8,18,.14) 0%,rgba(4,8,18,.24) 35%,rgba(4,8,18,.61) 100%),
     radial-gradient(circle at 70% 18%,rgba(50,100,255,.18),transparent 42%),
     radial-gradient(circle at 82% 28%,rgba(255,44,197,.16),transparent 35%);
 }
@@ -2059,6 +2079,7 @@ body.completion-celebration #hud{
   .glassMenuCard::before,.songCard.active::before,.startGameButton:not(:disabled),.rankHalo,
   .completionBurst,.completionText,.completionLogo,.completionLightning::before,.completionShockwave,
   body.completion-celebration #game,body.completion-celebration #hud{animation:none!important}
+  .completionText,.completionLogo{opacity:1!important}
 }
 
 .songCard.previewing{
@@ -2383,4 +2404,429 @@ body.completion-celebration #hud{
 .resultOverlayYd.hidden,
 #resultOverlay.hidden{
   display:none!important;
+}
+
+/* =========================================================
+   WASTED — DERROTA CINEMATOGRÁFICA
+   ========================================================= */
+
+@font-face{
+  font-family:'Pricedown';
+  src:url('../assets/fonts/Pricedown-Bl.otf') format('opentype');
+  font-display:swap;
+}
+
+.wastedOverlay{
+  position:fixed;
+  inset:0;
+  z-index:95;
+  display:grid;
+  place-items:center;
+  pointer-events:none;
+  overflow:hidden;
+}
+
+.wastedVignette,
+.wastedFlash,
+.wastedBar{
+  position:absolute;
+  inset:0;
+}
+
+.wastedVignette{
+  background:
+    radial-gradient(circle at 50% 50%,rgba(255,255,255,.02),transparent 34%),
+    radial-gradient(circle at 50% 50%,transparent 44%,rgba(0,0,0,.22) 72%,rgba(0,0,0,.54) 100%);
+  opacity:.9;
+}
+
+.wastedFlash{
+  opacity:0;
+  background:rgba(210,228,255,.08);
+}
+
+.wastedBar{
+  top:50%;
+  bottom:auto;
+  left:0;
+  right:0;
+  inset:auto 0 auto 0;
+  height:clamp(82px,13vh,132px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(8,8,8,.38);
+  box-shadow:0 0 0 1px rgba(255,255,255,.04) inset;
+  opacity:0;
+  transform:translateY(-50%) scaleY(.84);
+  transition:opacity .16s linear,transform .16s linear;
+}
+
+.wastedWord{
+  display:block;
+  padding-inline:22px;
+  font-family:'Pricedown', Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size:clamp(74px,10.2vw,146px);
+  line-height:.86;
+  letter-spacing:.01em;
+  text-transform:lowercase;
+  color:#b51621;
+  text-shadow:
+    0 2px 0 rgba(72,4,8,.95),
+    0 0 22px rgba(183,19,34,.16);
+  opacity:0;
+  transform:scale(.9);
+}
+
+body.wasted-sequence #game,
+body.wasted-sequence #hud{
+  filter:grayscale(1) contrast(1.12) brightness(1.04) blur(1px);
+  transform:scale(1.018) rotate(-1.2deg);
+  animation:wastedSlowCam 2s ease-out forwards;
+}
+
+body.wasted-sequence .rhythmBoard,
+body.wasted-sequence .topHud,
+body.wasted-sequence .pauseButton,
+body.wasted-sequence .judgement{
+  opacity:.2;
+}
+
+body.wasted-sequence .wastedFlash{
+  animation:wastedIntroFlash 2s ease-out both;
+}
+
+body.wasted-reveal #game,
+body.wasted-reveal #hud{
+  filter:grayscale(1) contrast(1.18) brightness(1.06) blur(1.3px);
+}
+
+body.wasted-reveal .wastedBar{
+  opacity:1;
+  transform:translateY(-50%) scaleY(1);
+}
+
+body.wasted-reveal .wastedWord{
+  opacity:1;
+  transform:scale(1);
+  animation:wastedWordPop .22s ease-out both;
+}
+
+@keyframes wastedSlowCam{
+  0%{transform:scale(1) rotate(0deg);filter:grayscale(.35) contrast(1.02) blur(0)}
+  14%{transform:scale(1.038) rotate(-1.8deg) translate(-8px,4px)}
+  32%{transform:scale(1.05) rotate(-2.4deg) translate(10px,-5px)}
+  58%{transform:scale(1.034) rotate(-1.6deg) translate(-4px,2px)}
+  100%{transform:scale(1.018) rotate(-1.2deg);filter:grayscale(1) contrast(1.12) brightness(1.04) blur(1px)}
+}
+
+@keyframes wastedIntroFlash{
+  0%{opacity:0}
+  12%{opacity:.18}
+  18%{opacity:.04}
+  26%{opacity:.14}
+  42%{opacity:0}
+  100%{opacity:0}
+}
+
+@keyframes wastedWordPop{
+  0%{opacity:0;transform:scale(.86)}
+  62%{opacity:1;transform:scale(1.045)}
+  100%{opacity:1;transform:scale(1)}
+}
+
+/* Melhor ajuste para zoom 100% em notebooks/monitores com pouca altura. */
+@media (max-height:760px) and (min-width:981px){
+  .menuShell{
+    grid-template-columns:minmax(190px,30vw) minmax(580px,64vw)!important;
+    gap:1.2vw!important;
+    padding:1.1vh 1.8vw!important;
+  }
+  .menuSideLogo{width:clamp(82px,7vw,112px)!important}
+  .glassMenuCard{
+    width:64vw!important;
+    max-width:64vw!important;
+    max-height:96vh!important;
+    padding:12px 15px!important;
+    border-radius:24px!important;
+  }
+  .brandHeader{margin-bottom:4px!important}
+  .menuMainLogo{width:clamp(208px,21vw,286px)!important}
+  .menuSectionLabel{margin:4px 0 6px!important}
+  .modernModeGrid{gap:8px!important}
+  .modeBtn{min-height:58px!important;padding:7px 11px!important;border-radius:14px!important}
+  .modeIcon{font-size:18px!important}
+  .modeBtn strong{font-size:13px!important;margin-bottom:2px!important}
+  .modeBtn span{font-size:9px!important}
+  .titleRow{margin:5px 0 4px!important}
+  .titlePill{min-height:30px!important;padding:5px 11px!important;font-size:11px!important}
+  .titlePillIcon{font-size:15px!important}
+  .modernSongGrid,.modernDifficultyGrid{gap:7px!important}
+  .songCard{min-height:88px!important;padding:8px 9px 20px!important;border-radius:15px!important}
+  .songCard strong{font-size:17px!important}
+  .songCard small{font-size:11px!important}
+  .songMeta{font-size:9px!important;margin-bottom:2px!important}
+  .songBadge{font-size:6px!important;padding:3px 5px!important;top:6px!important;right:6px!important}
+  .songCard::after{bottom:7px!important;height:3px!important}
+  .difficultyCard{min-height:78px!important;padding:7px 6px!important;border-radius:15px!important}
+  .difficultyStars{margin-bottom:1px!important;min-height:13px!important}.difficultyStars .star{font-size:11px!important}
+  .difficultyCard strong{font-size:15px!important;margin-bottom:2px!important}
+  .difficultyCard span{font-size:9px!important}
+  .difficultyCard small{font-size:8px!important;margin-top:2px!important}
+  #difficultyInfo{font-size:9px!important;min-height:12px!important;margin-top:3px!important}
+  .statusGlass{margin-top:4px!important;padding:6px 9px!important;font-size:9px!important;border-radius:11px!important}
+  .startRow{margin-top:5px!important}
+  .startGameButton{min-height:40px!important;min-width:190px!important;padding:7px 12px!important;font-size:14px!important;border-radius:13px!important}
+}
+
+@media (max-width:680px){
+  .wastedBar{height:74px}
+  .wastedWord{font-size:clamp(52px,18vw,92px)}
+}
+
+/* =========================================================
+   v2.17 — refinamentos You Dance: performance + defeat stack
+   ========================================================= */
+
+/* Mantém o WASTED legível como camada cinematográfica por trás do menu final. */
+.defeatOverlay{
+  background:rgba(3,4,9,.22)!important;
+  backdrop-filter:blur(2px) brightness(.76)!important;
+  -webkit-backdrop-filter:blur(2px) brightness(.76)!important;
+}
+
+.defeatCard{
+  background:
+    radial-gradient(circle at 50% 0%,rgba(255,48,125,.18),transparent 48%),
+    linear-gradient(145deg,rgba(11,13,25,.88),rgba(8,9,18,.82))!important;
+  border-color:rgba(255,76,143,.44)!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.13),
+    0 0 0 1px rgba(41,224,255,.08),
+    0 22px 64px rgba(0,0,0,.48),
+    0 0 38px rgba(255,48,154,.12)!important;
+}
+
+/* Medidor com Liquid Glass + neon ciano/roxo/rosa da identidade You Dance. */
+.blueBoard .performanceMeter{--yd-player-accent:#29e8ff}
+.redBoard .performanceMeter{--yd-player-accent:#ff43d4}
+
+.performanceMeter{
+  --yd-player-accent:#29e8ff;
+  position:absolute;
+  isolation:isolate;
+  padding:8px 10px 7px!important;
+  border-radius:14px!important;
+  border:1px solid rgba(255,255,255,.13)!important;
+  background:
+    linear-gradient(135deg,rgba(255,255,255,.075),rgba(255,255,255,.018) 42%,rgba(27,18,69,.13)),
+    rgba(5,8,22,.72)!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.16),
+    inset 0 -1px 0 rgba(255,255,255,.025),
+    0 5px 18px rgba(0,0,0,.30),
+    0 0 18px color-mix(in srgb,var(--yd-player-accent) 13%,transparent)!important;
+  backdrop-filter:blur(11px) saturate(1.3)!important;
+  -webkit-backdrop-filter:blur(11px) saturate(1.3)!important;
+}
+
+.performanceMeter::before{
+  content:'';
+  position:absolute;
+  inset:-1px;
+  z-index:-1;
+  border-radius:14px;
+  padding:1px;
+  background:linear-gradient(115deg,var(--yd-player-accent),rgba(121,84,255,.58),rgba(255,59,212,.72),transparent 74%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+  mask-composite:exclude;
+  opacity:.62;
+  pointer-events:none;
+}
+
+.performanceMeter::after{
+  content:'';
+  position:absolute;
+  left:12%;
+  right:12%;
+  top:0;
+  height:1px;
+  background:linear-gradient(90deg,transparent,var(--yd-player-accent),#8b63ff,#ff43d4,transparent);
+  box-shadow:0 0 9px var(--yd-player-accent);
+  opacity:.58;
+  pointer-events:none;
+}
+
+.performanceHeader{
+  margin-bottom:4px!important;
+  font-size:7px!important;
+  letter-spacing:1.45px!important;
+  color:rgba(232,246,255,.74)!important;
+}
+
+.performanceHeader > span{
+  display:flex;
+  align-items:center;
+  gap:5px;
+}
+
+.performanceHeader > span::before{
+  content:'✦';
+  color:var(--yd-player-accent);
+  font-size:8px;
+  text-shadow:0 0 8px currentColor;
+}
+
+.performanceHeader strong{
+  padding:2px 6px;
+  border-radius:999px;
+  background:rgba(255,255,255,.055);
+  border:1px solid rgba(255,255,255,.08);
+  font-size:8px!important;
+  color:#64efff!important;
+  text-shadow:0 0 9px rgba(41,232,255,.42)!important;
+}
+
+.performanceScale{padding-top:9px!important}
+
+.performanceBar{
+  position:relative;
+  height:10px!important;
+  border:1px solid rgba(232,249,255,.72)!important;
+  background:rgba(5,6,17,.82)!important;
+  box-shadow:
+    inset 0 0 8px rgba(0,0,0,.55),
+    0 0 0 1px rgba(29,224,255,.06),
+    0 0 12px rgba(85,73,255,.13)!important;
+}
+
+.performanceBar::after{
+  content:'';
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:linear-gradient(110deg,transparent 0 38%,rgba(255,255,255,.28) 48%,transparent 58%);
+  transform:translateX(-130%);
+  animation:ydPerformanceSweep 3.8s ease-in-out infinite;
+}
+
+.redZone{
+  background:linear-gradient(90deg,#ff285f,#ff3da8)!important;
+  box-shadow:inset 0 0 8px rgba(255,42,105,.48)
+}
+
+.yellowZone{
+  background:linear-gradient(90deg,#ffb83d,#b957ff)!important;
+  box-shadow:inset 0 0 8px rgba(182,85,255,.42)
+}
+
+.greenZone{
+  background:linear-gradient(90deg,#765cff,#26dcff)!important;
+  box-shadow:inset 0 0 9px rgba(37,224,255,.50)
+}
+
+.performanceNeedle{
+  top:-1px!important;
+  width:14px!important;
+  height:14px!important;
+  margin-left:-7px!important;
+  border-radius:4px!important;
+  border:1px solid rgba(255,255,255,.92)!important;
+  background:#fff!important;
+  color:transparent!important;
+  font-size:0!important;
+  box-shadow:
+    0 0 0 2px rgba(10,13,28,.82),
+    0 0 9px var(--yd-player-accent),
+    0 0 16px rgba(255,65,214,.34)!important;
+  transform:rotate(45deg)!important;
+  transition:left .2s cubic-bezier(.2,.8,.2,1),background .16s ease,box-shadow .16s ease!important;
+}
+
+.performanceMarkers{
+  margin-top:4px!important;
+  color:rgba(224,242,255,.52)!important;
+  font-size:6px!important;
+  letter-spacing:.3px;
+}
+
+.performanceMeter[data-state="yellow"] .performanceHeader strong{
+  color:#ffd56a!important;
+  text-shadow:0 0 10px rgba(255,201,68,.48)!important;
+  border-color:rgba(255,207,81,.20)!important;
+}
+
+.performanceMeter[data-state="yellow"] .performanceNeedle{
+  background:#ffd86b!important;
+  box-shadow:0 0 0 2px rgba(10,13,28,.82),0 0 10px #ffd25a,0 0 17px rgba(184,83,255,.40)!important;
+}
+
+.performanceMeter[data-state="red"] .performanceHeader strong{
+  color:#ff5aa8!important;
+  text-shadow:0 0 11px rgba(255,55,145,.62)!important;
+  border-color:rgba(255,63,157,.24)!important;
+}
+
+.performanceMeter[data-state="red"] .performanceNeedle{
+  background:#ff4b9c!important;
+  box-shadow:0 0 0 2px rgba(10,13,28,.82),0 0 12px #ff3e94,0 0 20px rgba(255,49,109,.48)!important;
+}
+
+.performanceMeter.critical{
+  border-color:rgba(255,60,145,.34)!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.13),
+    0 0 20px rgba(255,45,126,.26),
+    0 5px 18px rgba(0,0,0,.34)!important;
+}
+
+.performanceMeter.critical .performanceNeedle{
+  color:transparent!important;
+}
+
+.missCounter{
+  display:inline-flex;
+  align-items:center;
+  min-height:18px;
+  padding:2px 7px;
+  border:1px solid rgba(255,255,255,.075);
+  border-radius:999px;
+  background:rgba(7,10,24,.38);
+  color:rgba(223,242,255,.67)!important;
+  backdrop-filter:blur(6px);
+}
+
+.missCounter.danger{
+  color:#ff63ae!important;
+  border-color:rgba(255,60,151,.26);
+  background:rgba(69,10,46,.28);
+  text-shadow:0 0 11px rgba(255,58,156,.56)!important;
+}
+
+@keyframes ydPerformanceSweep{
+  0%,58%{transform:translateX(-130%);opacity:0}
+  68%{opacity:.75}
+  86%{transform:translateX(130%);opacity:.12}
+  100%{transform:translateX(130%);opacity:0}
+}
+
+.performanceMeter[data-state="red"] .performanceNeedle{
+  animation:ydPerformanceDangerPulse .62s ease-in-out infinite alternate!important;
+}
+
+.performanceMeter.critical .performanceNeedle{
+  animation:ydPerformanceNeedleCritical .1s linear infinite!important;
+}
+
+@keyframes ydPerformanceDangerPulse{
+  from{transform:rotate(45deg) scale(1);filter:brightness(1)}
+  to{transform:rotate(45deg) scale(1.14);filter:brightness(1.2)}
+}
+
+@keyframes ydPerformanceNeedleCritical{
+  0%,100%{transform:translate(0,0) rotate(45deg) scale(1.08)}
+  25%{transform:translate(-2px,1px) rotate(45deg) scale(1.12)}
+  50%{transform:translate(2px,-1px) rotate(45deg) scale(1.08)}
+  75%{transform:translate(-1px,-1px) rotate(45deg) scale(1.13)}
 }

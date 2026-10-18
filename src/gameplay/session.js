@@ -1,5 +1,40 @@
 import '../core/state.js';
 
+function resetWastedOverlay(){
+
+  stopWastedSound();
+  setStageBackgroundVideoPlaybackRate(1);
+
+  wastedOverlay.classList.add('hidden');
+  document.body.classList.remove(
+    'wasted-sequence',
+    'wasted-reveal'
+  );
+
+}
+
+function startWastedSequence(){
+
+  resetWastedOverlay();
+
+  wastedOverlay.classList.remove('hidden');
+  document.body.classList.add('wasted-sequence');
+  setStageBackgroundVideoPlaybackRate(.32);
+  playWastedSound();
+
+}
+
+function syncWastedReveal(elapsed){
+
+  if(
+    elapsed >= WASTED_REVEAL_SECONDS &&
+    !document.body.classList.contains('wasted-reveal')
+  ){
+    document.body.classList.add('wasted-reveal');
+  }
+
+}
+
 function pauseGame(){
 
   if(
@@ -87,6 +122,9 @@ async function resumeGame(){
 
 function returnToMenu(){
 
+  stopCrowdCelebrationSound();
+  resetWastedOverlay();
+
   try{
     victorySound.pause();
     victorySound.currentTime = 0;
@@ -116,6 +154,9 @@ async function startMode(
   selectedMode
 ){
 
+  stopCrowdCelebrationSound();
+  stopMenuThemeMusic(true);
+
   gamePaused = false;
   preRollElapsedAtPause = 0;
   defeatSequence = null;
@@ -125,6 +166,7 @@ async function startMode(
   defeatOverlay.classList.add('hidden');
   completionOverlay.classList.add('hidden');
   resultOverlay.classList.add('hidden');
+  resetWastedOverlay();
   document.body.classList.remove(
     'game-paused',
     'defeat-sequence',
@@ -222,6 +264,8 @@ async function startMode(
 
   menu.style.display =
     'none';
+
+  applyStageBackground(SONGS[selectedSong]);
 
   hud.style.display =
     'block';
@@ -399,6 +443,8 @@ function endByMistakeLimit(
   document.body.classList.remove('game-paused', 'completion-celebration');
   document.body.classList.add('defeat-sequence');
 
+  startWastedSequence();
+
   const outcome =
     mode === 2
       ? chooseMultiplayerOutcome(triggeringPlayer)
@@ -426,7 +472,8 @@ function endByMistakeLimit(
   const duration =
     Math.max(
       defeatDuration,
-      victoryDuration
+      victoryDuration,
+      WASTED_SEQUENCE_SECONDS
     );
 
   defeatSequence = {
@@ -574,7 +621,7 @@ function updateDefeatSequence(){
     Math.max(
       0,
       (now - defeatSequence.lastAt) / 1000
-    );
+    ) * .32;
 
   defeatSequence.lastAt = now;
 
@@ -601,6 +648,8 @@ function updateDefeatSequence(){
   const elapsed =
     (now - defeatSequence.startedAt) / 1000;
 
+  syncWastedReveal(elapsed);
+
   if(
     elapsed >= defeatSequence.duration + .12
   ){
@@ -619,6 +668,11 @@ function showDefeatOverlay(
   loser,
   winner
 ){
+
+  /*
+    O WASTED permanece ativo enquanto o menu de derrota estiver na tela.
+    Ele só é limpo ao tentar novamente, voltar ao menu ou iniciar uma nova partida.
+  */
 
   const limit =
     DIFFICULTIES[selectedDifficulty].missLimit;
@@ -664,6 +718,7 @@ function retryCurrentMode(){
 
   defeatSequence = null;
   defeatOverlay.classList.add('hidden');
+  resetWastedOverlay();
   document.body.classList.remove('defeat-sequence');
 
   startMode(retryMode);

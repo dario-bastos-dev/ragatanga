@@ -9,12 +9,23 @@
 </head>
 <body>
 
-<div id="game"></div>
+<div id="game">
+  <video
+    id="stageBackgroundVideo"
+    class="stageBackgroundVideo"
+    poster="./assets/backgrounds/thriller.jpeg"
+    autoplay
+    muted
+    loop
+    playsinline
+    preload="auto"
+    aria-hidden="true"
+  ></video>
+</div>
 
 <div id="menuOverlay" class="overlay menuOverlayYd">
   <div class="menuShell">
     <aside class="menuHeroPanel" aria-label="You Dance">
-      <img src="./assets/ui/you-dance-logo-main.png" alt="You Dance" class="menuSideLogo" />
       <span id="menuPreviewTitle" class="srOnly">SELECIONE UMA MÚSICA</span>
       <span id="menuPreviewSubtitle" class="srOnly">Escolha uma música para ouvir e ver uma prévia da coreografia.</span>
     </aside>
@@ -287,7 +298,6 @@
   <div class="completionLightning" aria-hidden="true"></div>
   <div class="completionShockwave" aria-hidden="true"></div>
   <div class="completionFlash" aria-hidden="true"></div>
-  <img src="./assets/ui/you-dance-logo-lateral.png" alt="You Dance" class="completionLogo" />
   <div class="completionText">YOU DANCE!</div>
 </div>
 
@@ -311,6 +321,14 @@
 </div>
 
 
+
+<div id="wastedOverlay" class="wastedOverlay hidden" aria-hidden="true">
+  <div class="wastedVignette"></div>
+  <div class="wastedFlash"></div>
+  <div class="wastedBar" id="wastedBar">
+    <span id="wastedWord" class="wastedWord">wasted</span>
+  </div>
+</div>
 
 <div id="defeatOverlay" class="defeatOverlay hidden" role="dialog" aria-modal="true" aria-labelledby="defeatTitle">
   <div class="defeatCard">

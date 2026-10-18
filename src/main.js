@@ -28,3 +28,4 @@ initLeaderboard();
 initControls();
 initInput();
 init3D();
+initMenuThemeMusic();

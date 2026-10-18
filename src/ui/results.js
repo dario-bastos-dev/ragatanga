@@ -12,6 +12,8 @@ function startCompletionCelebration(){
     victorySound.play().catch(() => {});
   }catch(error){}
 
+  playCrowdCelebrationSound();
+
   const activeIds =
     mode === 2
       ? ['p1', 'p2']
@@ -123,6 +125,8 @@ function finishCompletionCelebration(){
     victorySound.pause();
     victorySound.currentTime = 0;
   }catch(error){}
+
+  stopCrowdCelebrationSound();
 
   for(
     const dancer
@@ -361,6 +365,7 @@ function showNormalResults(){
   hud.style.display = 'none';
   startResultCelebration(winnerId);
   resultOverlay.classList.remove('hidden');
+  startResultThemeMusic();
 
 }
 

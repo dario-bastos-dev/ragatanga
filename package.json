@@ -1,20 +1,18 @@
 {
   "name": "ragatanga-rhythm-mvp",
   "private": true,
-  "version": "1.2.0",
+  "version": "2.17.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "check:architecture": "node scripts/validate-modular.mjs"
   },
   "dependencies": {
     "three": "^0.180.0"
   },
   "devDependencies": {
-    "jsdom": "^29.1.1",
-    "vite": "^7.1.7",
-    "vitest": "^4.1.11"
+    "vite": "^7.1.7"
   }
 }

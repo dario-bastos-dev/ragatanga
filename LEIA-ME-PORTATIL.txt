@@ -1,0 +1,77 @@
+YOU DANCE v2.17 - VERSAO PORTATIL (SEM NPM)
+================================================
+
+COMO ABRIR
+1. Extraia o ZIP inteiro para uma pasta normal do Windows.
+2. Dê dois cliques em: ABRIR-JOGO.bat
+3. Mantenha a janela preta aberta enquanto estiver jogando.
+4. O navegador abrirá automaticamente em http://127.0.0.1:5173/
+
+NAO PRECISA INSTALAR
+- Node.js
+- npm
+- Vite
+- Python
+
+IMPORTANTE
+- É necessário acesso à internet porque o Three.js e o personagem padrão Samba Dancing são carregados das mesmas fontes públicas HTTPS usadas pela versão base validada.
+- Áudios, fundos, coreografias e demais arquivos do jogo ficam dentro deste ZIP.
+- Não abra index.html diretamente; use ABRIR-JOGO.bat.
+- Para encerrar o servidor, feche a janela do terminal que foi aberta pelo .bat.
+
+SE O WINDOWS BLOQUEAR O .BAT
+- Clique com o botão direito > Propriedades e, se aparecer, marque "Desbloquear".
+- O script não instala nada e não solicita acesso de Administrador.
+
+PORTA LOCAL
+- O jogo usa somente 127.0.0.1:5173, acessível apenas no próprio computador.
+
+
+NOVIDADES v1.7
+- Corrigido o recuo/travamento da primeira nota no inicio da partida.
+- Limite de erros seguidos por dificuldade: Facil 10, Normal 15, Dificil 20, Extremo 25.
+- Um acerto zera a sequencia de erros.
+- Ao atingir o limite, a musica para e o personagem perdedor executa Dying.fbx.
+- Tela de derrota com Tentar novamente e Voltar ao menu.
+- No modo 2 jogadores, em derrota por limite de erros vence quem tiver menos erros totais; pontuacao desempata.
+
+
+NOVIDADES v2.0
+- Contagem 3, 2, 1, DANCE! antes da partida.
+- Notas entram mais devagar durante a contagem e nao atingem o HIT.
+- P1: animacao pre-partida Shooting Arrow.
+- P2: animacao pre-partida Punching Bag.
+- P2 agora usa a ordem visual: ESQUERDA, CIMA, BAIXO, DIREITA.
+
+
+BARRA DE PERFORMANCE (v2.0)
+- Vermelho fica à esquerda, amarelo no centro e verde à direita.
+- A seta começa no verde e anda para a esquerda conforme os erros seguidos aumentam.
+- As faixas se adaptam automaticamente ao limite de erros da dificuldade.
+- No Facil: 0-3 verde, 4-6 amarelo, 7-10 vermelho.
+
+
+NOVIDADES v2.1
+- YOU DANCE! ao concluir a musica normalmente.
+- Tremor/euforia na tela durante a comemoracao.
+- P1: Bboy Hip Hop Move.
+- P2: Hip Hop Dancing.
+- Nao interfere na derrota por limite de erros.
+
+
+NOVIDADES v2.10 - THRILLER / MICHAEL
+- Correcao isolada dos bracos do Michael Jackson.
+- Ombro, cotovelo e punho agora sao medidos diretamente na malha original do Michael.
+- A manga, o braco e o antebraco nao recebem mais influencia da coluna.
+- Corpo, rosto, roupa, pernas, texturas, ZombieGirl e gameplay permanecem inalterados.
+
+
+NOVIDADES v2.17
+- Novo menu You Dance com Liquid Glass, neon e logos integradas.
+- Preview real de 10 segundos da música/coreografia ao selecionar uma faixa.
+- Personagem P1 da fase aparece no menu e volta à pose de espera após a prévia.
+- Fácil é a dificuldade padrão.
+- INICIAR DANÇA só habilita após selecionar a música.
+- Tela final Vitória com personagem comemorando à esquerda e resultado à direita.
+- YOU DANCE! ganhou raio central, flash, shockwave e tremor antes do resultado.
+- Responsividade e compactação melhoradas para notebooks e telas menores.
