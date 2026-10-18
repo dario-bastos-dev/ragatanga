@@ -58,6 +58,10 @@ globalThis.victorySound = new Audio(VICTORY_SOUND_URL);
 victorySound.preload = 'auto';
 victorySound.volume = .92;
 
+globalThis.wastedSound = new Audio(WASTED_SOUND_URL);
+wastedSound.preload = 'auto';
+wastedSound.volume = .94;
+
 globalThis.selectedDifficulty = 'easy';
 
 globalThis.scene = undefined;
@@ -201,6 +205,9 @@ globalThis.dancers = {
 
 globalThis.players = {};
 
+globalThis.stageBackgroundVideo =
+  document.querySelector('#stageBackgroundVideo');
+
 globalThis.music =
   document.querySelector('#music');
 
@@ -221,6 +228,15 @@ globalThis.completionOverlay =
 
 globalThis.pauseOverlay =
   document.querySelector('#pauseOverlay');
+
+globalThis.wastedOverlay =
+  document.querySelector('#wastedOverlay');
+
+globalThis.wastedWord =
+  document.querySelector('#wastedWord');
+
+globalThis.wastedBar =
+  document.querySelector('#wastedBar');
 
 globalThis.pauseButton =
   document.querySelector('#pauseButton');

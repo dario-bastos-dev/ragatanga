@@ -1,5 +1,13 @@
 # You Dance — Projeto v2.17 PORTÁTIL
 
+
+## Ajustes de interação da v2.17
+
+- MISS em Ragatanga, Macarena e YMCA agora troca a coreografia pela animação de espera do menu, retornando à dança no próximo acerto.
+- O texto **YOU DANCE!** permanece visível durante toda a celebração final de 7 segundos.
+- A celebração final ganhou áudio de plateia em volume reduzido, mixado ao som de vitória.
+- O menu principal recebeu efeitos sonoros separados para seleção/opções, início da dança e pause durante a partida.
+
 ## Objetivo da v2.17
 
 A v2.17 é a **refatoração modular da v2.16**. O objetivo desta versão não é alterar o layout, as mecânicas ou os assets aprovados, e sim reorganizar o código para ficar compatível com a arquitetura do repositório principal antes da abertura do Pull Request.

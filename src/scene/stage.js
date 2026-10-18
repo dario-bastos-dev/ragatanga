@@ -1,21 +1,85 @@
 import '../core/state.js';
 
+function getStageBackgroundVideoUrl(song){
+
+  return song?.backgroundVideo || null;
+
+}
+
+function setStageBackgroundVideoPlaybackRate(rate = 1){
+
+  if(!stageBackgroundVideo){
+    return;
+  }
+
+  const safeRate = THREE.MathUtils.clamp(Number(rate) || 1, .1, 4);
+  stageBackgroundVideo.playbackRate = safeRate;
+  stageBackgroundVideo.defaultPlaybackRate = safeRate;
+
+}
+
+function setStageBackgroundVideo(song){
+
+  if(!stageBackgroundVideo){
+    return false;
+  }
+
+  const videoUrl = getStageBackgroundVideoUrl(song);
+
+  if(!videoUrl){
+    stageBackgroundVideo.classList.remove('active');
+    try{ stageBackgroundVideo.pause(); }catch(error){}
+    stageBackgroundVideo.removeAttribute('src');
+    stageBackgroundVideo.load();
+    return false;
+  }
+
+  const currentSrc = stageBackgroundVideo.getAttribute('src');
+  const sourceChanged = currentSrc !== videoUrl;
+
+  if(sourceChanged){
+    try{ stageBackgroundVideo.pause(); }catch(error){}
+    stageBackgroundVideo.src = videoUrl;
+    stageBackgroundVideo.poster = song?.background || '';
+    stageBackgroundVideo.load();
+    try{ stageBackgroundVideo.currentTime = 0; }catch(error){}
+  }
+
+  stageBackgroundVideo.muted = true;
+  stageBackgroundVideo.loop = true;
+  stageBackgroundVideo.playsInline = true;
+  setStageBackgroundVideoPlaybackRate(
+    document.body.classList.contains('wasted-sequence') ? .32 : 1
+  );
+
+  stageBackgroundVideo.classList.add('active');
+
+  try{
+    stageBackgroundVideo.play().catch(() => {});
+  }catch(error){}
+
+  return true;
+
+}
+
 function applyStageBackground(song){
 
-  const game =
-    document.querySelector('#game');
+  const game = document.querySelector('#game');
 
-  if(!game || !song?.background){
+  if(!game || !song){
     return;
   }
 
   /*
-    O cenário de cada fase é uma imagem 16:9 colocada atrás do WebGL.
-    O canvas do Three.js fica transparente, então personagem, anéis e HUD
-    são renderizados por cima sem deformar a arte do cenário.
+    Cada música controla seu próprio vídeo. A imagem estática fica como
+    fallback atrás do vídeo enquanto ele carrega ou caso o browser não
+    consiga reproduzi-lo.
   */
-  game.style.backgroundImage =
-    `url("${song.background}")`;
+  game.style.backgroundImage = song.background
+    ? `url("${song.background}")`
+    : 'none';
+
+  setStageBackgroundVideo(song);
 
 }
 
@@ -1091,6 +1155,8 @@ function render(){
 
 Object.assign(globalThis, {
   applyStageBackground,
+  setStageBackgroundVideo,
+  setStageBackgroundVideoPlaybackRate,
   applyStageLook,
   rememberMaterialBase,
   prepareCharacterMaterials,

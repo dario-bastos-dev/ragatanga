@@ -191,6 +191,8 @@ function finishMenuPreview(){
     menuPreviewSubtitle.textContent = 'Prévia concluída · clique novamente na música para rever ou pressione INICIAR DANÇA.';
   }
 
+  resumeMenuThemeMusic();
+
 }
 
 function showMenuCharacterWaiting(){
@@ -202,6 +204,16 @@ function showMenuCharacterWaiting(){
   stopMenuPreview();
   resetSceneDancers();
   ringP2.visible = false;
+
+  /*
+    Evita o bug visual em que o personagem reaparecia congelado no primeiro
+    frame da coreografia antes do Idle terminar de carregar.
+  */
+  if(!menuIdleClip){
+    ringP1.visible = false;
+    return;
+  }
+
   ringP1.visible = true;
   ringP1.position.x = MENU_CHARACTER_X;
 
@@ -211,14 +223,41 @@ function showMenuCharacterWaiting(){
     const dancer = dancers.p1;
 
     if(!dancer){
+      ringP1.visible = false;
       return;
     }
 
     dancer.mixer.stopAllAction();
-    setMenuIdlePose(dancer, 0);
+    dancer.menuIdleAction = null;
+
+    const idle = ensureMenuIdleAction(dancer);
+
+    if(!idle){
+      dancer.object.visible = false;
+      ringP1.visible = false;
+      return;
+    }
+
+    dancer.object.visible = true;
+    idle.reset();
+    idle.enabled = true;
+    idle.paused = false;
+    idle.setEffectiveWeight(1);
+    idle.setLoop(THREE.LoopRepeat, Infinity);
+    idle.play();
+
+    if(dancer.action && dancer.action !== idle){
+      dancer.action.stop();
+      dancer.action.setEffectiveWeight(0);
+    }
+
+    dancer.enabled = false;
+    dancer.menuState = 'idle';
+    dancer.mixer.update(0);
     menuPreviewState.lastAt = performance.now();
 
   }catch(error){
+    ringP1.visible = false;
     console.error('Não foi possível preparar o personagem do menu.', error);
   }
 
@@ -229,6 +268,7 @@ function canStartSelectedSong(){
   const danceReady = !SONGS[selectedSong].dance || Boolean(danceFiles[selectedSong]);
   const preMatchReady = Boolean(preMatchClips.p1 && preMatchClips.p2);
   const completionReady = Boolean(completionClips.p1 && completionClips.p2);
+  const gameplayIdleReady = Boolean(menuIdleClip);
   const thrillerSkinReady = selectedSong !== 'thriller' || Boolean(thrillerModels.p1 && thrillerModels.p2);
   const outcomeAnimationsReady = Boolean(defeatClip && victoryClip);
 
@@ -238,6 +278,7 @@ function canStartSelectedSong(){
     danceReady &&
     preMatchReady &&
     completionReady &&
+    gameplayIdleReady &&
     outcomeAnimationsReady &&
     thrillerSkinReady &&
     !musicError &&
@@ -276,6 +317,7 @@ async function startMenuPreview(){
     return;
   }
 
+  stopMenuThemeMusic(false);
   stopMenuPreview();
   resetSceneDancers();
   ringP2.visible = false;
@@ -464,6 +506,10 @@ function selectSong(id){
     return;
   }
 
+  if(songChosenByUser){
+    stopMenuThemeMusic(false);
+  }
+
   if(menuPreviewState.active){
     stopMenuPreview();
   }
@@ -604,6 +650,14 @@ function updateMenuAvailability(){
       completionClips.p2
     );
 
+  /*
+    A animação de espera também é usada durante a partida quando há MISS.
+    Não liberamos o início até ela estar pronta, evitando o antigo estado
+    em que Ragatanga/Macarena/YMCA congelavam o personagem.
+  */
+  const gameplayIdleReady =
+    Boolean(menuIdleClip);
+
   const thrillerSkinReady =
     selectedSong !== 'thriller' ||
     Boolean(
@@ -669,6 +723,10 @@ function updateMenuAvailability(){
       status = 'Não foi possível carregar uma animação de comemoração.';
     }else if(!completionReady){
       status = 'Carregando animações de comemoração…';
+    }else if(menuIdleAnimationError){
+      status = 'Não foi possível preparar a animação de espera.';
+    }else if(!gameplayIdleReady){
+      status = 'Carregando animação de espera…';
     }else if(!outcomeAnimationsReady){
       status = 'Carregando animações de derrota e vitória…';
     }else if(!danceReady){

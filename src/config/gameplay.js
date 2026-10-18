@@ -13,6 +13,26 @@ export const MENU_IDLE_ANIMATION_URL =
 export const VICTORY_SOUND_URL =
   './assets/audio/you-dance-victory-7s.mp3';
 
+export const CROWD_CELEBRATION_SOUND_URL =
+  './assets/audio/ui/crowd-celebration.mp3';
+
+export const MENU_THEME_SOUND_URL =
+  './assets/audio/ui/menu-theme-love-me-again.mp3';
+
+export const MENU_THEME_VOLUME = .03;
+
+export const MENU_SELECT_SOUND_URL =
+  './assets/audio/ui/menu-select.mp3';
+
+export const PAUSE_SOUND_URL =
+  './assets/audio/ui/pause.mp3';
+
+export const START_DANCE_SOUND_URL =
+  './assets/audio/ui/start-dance.mp3';
+
+export const WASTED_SOUND_URL =
+  './assets/audio/ui/wasted.mp3';
+
 export const PRE_MATCH_ANIMATION_URLS = {
   p1: './assets/animations/shooting-arrow.fbx',
   p2: './assets/animations/punching-bag.fbx'
@@ -29,6 +49,10 @@ export const THRILLER_CHARACTER_URLS = {
 };
 
 export const COMPLETION_CELEBRATION_SECONDS = 7;
+
+export const WASTED_REVEAL_SECONDS = 2;
+
+export const WASTED_SEQUENCE_SECONDS = 5.35;
 
 export const PRE_ROLL_SECONDS = 3;
 

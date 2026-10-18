@@ -1,6 +1,42 @@
 import '../core/state.js';
 
 export function initControls(){
+  /*
+    Som 1 do pacote GTA: feedback para qualquer opção do menu principal,
+    exceto o botão INICIAR DANÇA (que possui um efeito próprio).
+  */
+  menu.addEventListener(
+    'click',
+    event => {
+      const button = event.target.closest('button');
+      if(
+        !button ||
+        button === startGameButton ||
+        !menu.contains(button)
+      ){
+        return;
+      }
+      playMenuSelectSound();
+    }
+  );
+
+  const addOverlayMenuSound = overlay => {
+    overlay?.addEventListener(
+      'click',
+      event => {
+        const button = event.target.closest('button');
+        if(!button || !overlay.contains(button)){
+          return;
+        }
+        playMenuSelectSound();
+      },
+      true
+    );
+  };
+
+  addOverlayMenuSound(pauseOverlay);
+  addOverlayMenuSound(resultOverlay);
+
   document.querySelector('#onePlayer').onclick = () => {
     menuSelectedMode = 1;
     updateModeButtons();
@@ -13,6 +49,7 @@ export function initControls(){
 
   startGameButton.onclick = () => {
     if(startGameButton.disabled) return;
+    playStartDanceSound();
     stopMenuPreview();
     startMode(menuSelectedMode);
   };
@@ -20,7 +57,10 @@ export function initControls(){
   document.querySelector('#backMenu').onclick = () => returnToMenu();
   retryFromResultsButton.onclick = () => retryCurrentMode();
   chooseMusicFromResultsButton.onclick = () => returnToMenu();
-  pauseButton.onclick = () => pauseGame();
+  pauseButton.onclick = () => {
+    playPauseSound();
+    pauseGame();
+  };
   continueGameButton.onclick = () => resumeGame();
   pauseBackMenuButton.onclick = () => returnToMenu();
   defeatRetryButton.onclick = () => retryCurrentMode();

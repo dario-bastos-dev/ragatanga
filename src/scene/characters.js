@@ -748,6 +748,23 @@ function attachDance(
   } =
     getDanceClips(template);
 
+  const motionSet =
+    getCharacterMotionSet(
+      template,
+      playerId
+    );
+
+  /*
+    Ragatanga, Macarena e YMCA não possuem um idle próprio dentro da
+    coreografia empacotada. Nesses casos reutilizamos exatamente a animação
+    de espera do menu. Assim, um MISS troca dança -> espera, e o próximo
+    acerto volta suavemente para a coreografia sem congelar o personagem.
+  */
+  const gameplayIdleClip =
+    idle ||
+    motionSet.menuIdle ||
+    null;
+
   const mixer =
     new THREE.AnimationMixer(
       object
@@ -762,13 +779,18 @@ function attachDance(
 
   let idleAction = null;
 
-  if(idle){
+  if(gameplayIdleClip){
 
     idleAction =
       mixer.clipAction(
-        idle
+        gameplayIdleClip
       );
 
+    idleAction.setLoop(
+      THREE.LoopRepeat,
+      Infinity
+    );
+    idleAction.clampWhenFinished = false;
     idleAction.play();
 
     action.setEffectiveWeight(0);
@@ -776,12 +798,6 @@ function attachDance(
   }
 
   mixer.setTime(0);
-
-  const motionSet =
-    getCharacterMotionSet(
-      template,
-      playerId
-    );
 
   return {
     type: 'native',
