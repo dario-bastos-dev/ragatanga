@@ -23,8 +23,11 @@ function startCompletionCelebration(){
 
     const dancer = dancers[id];
     const clip =
-      dancer?.completionClip ||
-      completionClips[id];
+      getDancerMotionClip(
+        dancer,
+        id,
+        'completion'
+      );
 
     if(!dancer || !clip){
       continue;
@@ -98,10 +101,7 @@ function updateCompletionSequence(){
 
   for(const id of activeIds){
     const dancer = dancers[id];
-    if(
-      dancer?.completionAction &&
-      (dancer.completionClip || completionClips[id])
-    ){
+    if(dancer?.completionAction){
       dancer.mixer.update(delta);
     }
   }
@@ -205,8 +205,11 @@ function startResultCelebration(winnerId){
     dancer.mixer.stopAllAction();
 
     const clip =
-      dancer.completionClip ||
-      completionClips[id] ||
+      getDancerMotionClip(
+        dancer,
+        id,
+        'completion'
+      ) ||
       dancer.clip;
 
     if(!clip){

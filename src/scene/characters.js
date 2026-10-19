@@ -655,23 +655,23 @@ function getCharacterMotionSet(
     );
   }
 
-  if(
-    perTemplate[playerId] &&
-    (
-      perTemplate[playerId].menuIdle ||
-      !menuIdleRawClip
-    )
-  ){
-    return perTemplate[playerId];
-  }
+  /*
+    O menu pede este conjunto assim que a skin chega, e alguns FBX de
+    animação podem ainda estar carregando. Itens que ficaram null são
+    preenchidos nas chamadas seguintes; os já prontos são reaproveitados.
+  */
+  const result =
+    perTemplate[playerId] ??= {
+      defeat: null,
+      victory: null,
+      preMatch: null,
+      completion: null,
+      menuIdle: null
+    };
 
-  const result = {
-    defeat: null,
-    victory: null,
-    preMatch: null,
-    completion: null,
-    menuIdle: null
-  };
+  if(Object.values(result).every(Boolean)){
+    return result;
+  }
 
   const retargetSafe = (
     source,
@@ -698,43 +698,71 @@ function getCharacterMotionSet(
     }
   };
 
-  result.defeat =
+  result.defeat ??=
     retargetSafe(
       defeatSource,
       defeatRawClip,
-      `thriller-${playerId}-defeat`
+      `skin-${playerId}-defeat`
     );
 
-  result.victory =
+  result.victory ??=
     retargetSafe(
       victorySource,
       victoryRawClip,
-      `thriller-${playerId}-victory`
+      `skin-${playerId}-victory`
     );
 
-  result.preMatch =
+  result.preMatch ??=
     retargetSafe(
       preMatchSources[playerId],
       preMatchRawClips[playerId],
-      `thriller-${playerId}-pre-match`
+      `skin-${playerId}-pre-match`
     );
 
-  result.completion =
+  result.completion ??=
     retargetSafe(
       completionSources[playerId],
       completionRawClips[playerId],
-      `thriller-${playerId}-completion`
+      `skin-${playerId}-completion`
     );
 
-  result.menuIdle =
+  result.menuIdle ??=
     retargetSafe(
       menuIdleSource,
       menuIdleRawClip,
-      `thriller-${playerId}-menu-idle`
+      `skin-${playerId}-menu-idle`
     );
 
-  perTemplate[playerId] = result;
   return result;
+
+}
+
+/*
+  Clip de pré-partida/comemoração/vitória/derrota de um dancer. Os clips
+  globais (preMatchClips, defeatClip...) são do rig do Samba; numa skin com
+  outro esqueleto eles torcem o corpo. Por isso o fallback sempre passa
+  pelo conjunto retargetado para o template do próprio dancer.
+*/
+function getDancerMotionClip(
+  dancer,
+  playerId,
+  kind
+){
+
+  if(!dancer){
+    return null;
+  }
+
+  const key =
+    `${kind}Clip`;
+
+  dancer[key] ||=
+    getCharacterMotionSet(
+      dancer.template || baseModel,
+      playerId
+    )[kind];
+
+  return dancer[key];
 
 }
 
@@ -850,8 +878,11 @@ function startPreMatchAnimation(
     dancers[id];
 
   const clip =
-    dancer?.preMatchClip ||
-    preMatchClips[id];
+    getDancerMotionClip(
+      dancer,
+      id,
+      'preMatch'
+    );
 
   if(!dancer || !clip){
     return;
@@ -1120,6 +1151,7 @@ Object.assign(globalThis, {
   prepareExternalAnimations,
   getDanceClips,
   getCharacterMotionSet,
+  getDancerMotionClip,
   getCharacterTemplate,
   attachDance,
   startPreMatchAnimation,

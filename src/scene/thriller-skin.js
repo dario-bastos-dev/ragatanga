@@ -17,6 +17,129 @@ function hasMixamoRig(root){
 
 }
 
+/*
+  Articulações do Michael (v2.18)
+  -------------------------------
+  O MJ_THRILLER.fbx é uma malha estática em A-pose: braços ~40° abaixo da
+  horizontal e pés mais afastados que o Samba. Os pontos abaixo foram medidos
+  sobre o wireframe do próprio FBX, num espaço normalizado:
+
+    x = lateral a partir do centro (+x = lado esquerdo do personagem)
+    y = altura a partir da sola
+    z = profundidade a partir do centro da bounding box (+z = frente)
+
+  Unidade: altura total do Michael = 180. Só o lado esquerdo é descrito; o
+  direito é espelhado em x.
+*/
+const MICHAEL_JOINTS = {
+  Hips: [0, 99, -1],
+  Spine: [0, 109, -2],
+  Spine1: [0, 121, -3],
+  Spine2: [0, 134, -3],
+  Neck: [0, 150, -3],
+  Head: [0, 160, -1],
+  HeadTop_End: [0, 180, 1]
+};
+
+const MICHAEL_SIDE_JOINTS = {
+  Shoulder: [6, 145, -3],
+  Arm: [17.5, 142, -4],
+  ForeArm: [40, 127, -4],
+  Hand: [57, 114, 0],
+  HandMiddle1: [64.5, 109, 2],
+  HandMiddle4: [71, 104, 3],
+  UpLeg: [9, 92, -1],
+  Leg: [12, 50, 0],
+  Foot: [14, 10, -4],
+  ToeBase: [14, 2, 7],
+  Toe_End: [14, 1, 14]
+};
+
+/*
+  Ossos que giram da T-pose do Samba para a A-pose do Michael durante o bind.
+  Cada item mira o osso filho na articulação medida acima.
+*/
+const MICHAEL_AIM_CHAIN = [
+  ['Shoulder', 'Arm'],
+  ['Arm', 'ForeArm'],
+  ['ForeArm', 'Hand'],
+  ['Hand', 'HandMiddle1'],
+  ['UpLeg', 'Leg'],
+  ['Leg', 'Foot'],
+  ['Foot', 'ToeBase'],
+  ['ToeBase', 'Toe_End']
+];
+
+/*
+  Segmentos usados para os pesos de skin. Cada segmento pertence a um osso
+  (owner) e vai da articulação desse osso até a próxima.
+*/
+const MICHAEL_WEIGHT_SEGMENTS = [
+  ['Hips', 'Hips', 'Spine'],
+  ['Hips', 'Hips', 'LeftUpLeg'],
+  ['Hips', 'Hips', 'RightUpLeg'],
+  ['Spine', 'Spine', 'Spine1'],
+  ['Spine1', 'Spine1', 'Spine2'],
+  ['Spine2', 'Spine2', 'Neck'],
+  ['Spine2', 'Spine2', 'LeftShoulder'],
+  ['Spine2', 'Spine2', 'RightShoulder'],
+  ['Neck', 'Neck', 'Head'],
+  ['Head', 'Head', 'HeadTop_End'],
+  ...['Left', 'Right'].flatMap(side => [
+    [`${side}Shoulder`, `${side}Shoulder`, `${side}Arm`],
+    [`${side}Arm`, `${side}Arm`, `${side}ForeArm`],
+    [`${side}ForeArm`, `${side}ForeArm`, `${side}Hand`],
+    [`${side}Hand`, `${side}Hand`, `${side}HandMiddle4`],
+    [`${side}UpLeg`, `${side}UpLeg`, `${side}Leg`],
+    [`${side}Leg`, `${side}Leg`, `${side}Foot`],
+    [`${side}Foot`, `${side}Foot`, `${side}ToeBase`],
+    [`${side}ToeBase`, `${side}ToeBase`, `${side}Toe_End`]
+  ])
+];
+
+/*
+  Raio (na unidade 180) da transição suave de pesos em cada articulação,
+  indexado pelo osso filho da articulação. Cotovelo/joelho largos o bastante
+  para não "quebrar" a manga; punho/tornozelo curtos para não amassar mão/pé.
+*/
+const MICHAEL_JOINT_BLEND = {
+  Spine: 6,
+  Spine1: 6,
+  Spine2: 6,
+  Neck: 4,
+  Head: 3.5,
+  Shoulder: 4,
+  Arm: 5.5,
+  ForeArm: 5,
+  Hand: 3,
+  UpLeg: 7,
+  Leg: 6,
+  Foot: 3,
+  ToeBase: 2
+};
+
+const MICHAEL_WEIGHT_PARENT = {
+  Spine: 'Hips',
+  Spine1: 'Spine',
+  Spine2: 'Spine1',
+  Neck: 'Spine2',
+  Head: 'Neck',
+  Shoulder: 'Spine2',
+  Arm: 'Shoulder',
+  ForeArm: 'Arm',
+  Hand: 'ForeArm',
+  UpLeg: 'Hips',
+  Leg: 'UpLeg',
+  Foot: 'Leg',
+  ToeBase: 'Foot'
+};
+
+const stripSide = name =>
+  name.replace(/^(Left|Right)/, '');
+
+const sideOf = name =>
+  name.match(/^(Left|Right)/)?.[1] || '';
+
 function buildAutoRiggedThrillerSkin(
   staticSource,
   rigTemplate
@@ -35,9 +158,6 @@ function buildAutoRiggedThrillerSkin(
   rigRoot.traverse(object => {
     if(
       object.isSkinnedMesh &&
-      object.geometry?.getAttribute('position') &&
-      object.geometry?.getAttribute('skinIndex') &&
-      object.geometry?.getAttribute('skinWeight') &&
       object.skeleton?.bones?.length
     ){
       referenceMeshes.push(object);
@@ -50,27 +170,58 @@ function buildAutoRiggedThrillerSkin(
     );
   }
 
-  const canonicalSkeleton =
-    referenceMeshes[0].skeleton;
-
-  const canonicalBones =
-    canonicalSkeleton.bones;
-
-  const canonicalIndexByName =
+  /*
+    O Samba Dancing.fbx traz ossos duplicados aninhados com o mesmo nome
+    (ex.: LeftArm/LeftArm) e o skeleton das malhas de referência aponta ora
+    para um, ora para outro. As animações (PropertyBinding) movem sempre o
+    PRIMEIRO osso com aquele nome na hierarquia, então é esse conjunto que
+    vira o esqueleto do Michael. Ossos de ponta (HeadTop_End, Toe_End...)
+    também entram aqui, mesmo fora do skeleton original.
+  */
+  const boneByName =
     new Map();
 
-  canonicalBones.forEach((bone, index) => {
-    if(!canonicalIndexByName.has(bone.name)){
-      canonicalIndexByName.set(bone.name, index);
+  const allBones = [];
+
+  rigRoot.traverse(object => {
+    if(!object.isBone){
+      return;
+    }
+
+    allBones.push(object);
+
+    const name =
+      object.name.replace(/^mixamorig/, '');
+
+    if(!boneByName.has(name)){
+      boneByName.set(name, object);
     }
   });
 
-  if(!canonicalIndexByName.has('mixamorigHips')){
-    throw new Error(
-      'O rig base não possui mixamorigHips.'
-    );
+  const canonicalBones =
+    [...boneByName.values()];
+
+  const requiredBones = [
+    'Hips',
+    ...Object.keys(MICHAEL_JOINTS),
+    ...['Left', 'Right'].flatMap(side =>
+      Object.keys(MICHAEL_SIDE_JOINTS)
+        .map(name => side + name)
+    )
+  ];
+
+  for(const name of requiredBones){
+    if(!boneByName.has(name)){
+      throw new Error(
+        `O rig base não possui mixamorig${name}.`
+      );
+    }
   }
 
+  /*
+    Encaixe da malha estática no espaço do rig: mesma altura do Samba, pés no
+    chão e centralizada em x/z.
+  */
   const rigBox =
     new THREE.Box3();
 
@@ -86,22 +237,10 @@ function buildAutoRiggedThrillerSkin(
     new THREE.Box3()
       .setFromObject(staticSource);
 
-  const rigSize =
-    new THREE.Vector3();
-
-  const sourceSize =
-    new THREE.Vector3();
-
-  const rigCenter =
-    new THREE.Vector3();
-
-  const sourceCenter =
-    new THREE.Vector3();
-
-  rigBox.getSize(rigSize);
-  sourceBox.getSize(sourceSize);
-  rigBox.getCenter(rigCenter);
-  sourceBox.getCenter(sourceCenter);
+  const rigSize = rigBox.getSize(new THREE.Vector3());
+  const sourceSize = sourceBox.getSize(new THREE.Vector3());
+  const rigCenter = rigBox.getCenter(new THREE.Vector3());
+  const sourceCenter = sourceBox.getCenter(new THREE.Vector3());
 
   if(
     !Number.isFinite(sourceSize.y) ||
@@ -141,1616 +280,388 @@ function buildAutoRiggedThrillerSkin(
           )
       );
 
-  /*
-    Amostras da malha original já rigada. Guardamos posição + pesos e
-    depois usamos uma grade espacial para achar rapidamente os vizinhos
-    de cada vértice da nova skin.
-  */
-  const rigRootInverse =
-    rigRoot.matrixWorld
-      .clone()
-      .invert();
+  /* Unidade normalizada (altura 180) -> espaço do rig -> mundo. */
+  const unit =
+    rigSize.y / 180;
 
-  const samples = [];
-
-  const grid =
+  const joints =
     new Map();
 
-  const cellSize =
-    Math.max(
-      rigSize.y / 30,
-      0.0001
-    );
+  const toWorld = ([x, y, z], mirror = 1) =>
+    new THREE.Vector3(
+      rigCenter.x + x * mirror * unit,
+      rigBox.min.y + y * unit,
+      rigCenter.z + z * unit
+    ).applyMatrix4(rigRoot.matrixWorld);
 
-  const cellKey = (
-    x,
-    y,
-    z
-  ) =>
-    `${x}|${y}|${z}`;
+  for(const [name, point] of Object.entries(MICHAEL_JOINTS)){
+    joints.set(name, toWorld(point));
+  }
+
+  for(const [name, point] of Object.entries(MICHAEL_SIDE_JOINTS)){
+    joints.set(`Left${name}`, toWorld(point, 1));
+    joints.set(`Right${name}`, toWorld(point, -1));
+  }
 
   /*
-    Amostras do corpo de referência (posição + pesos). São recalculadas
-    depois que o rig é posado na A-pose do Michael, para que os pesos
-    transferidos venham de um corpo na MESMA pose da malha.
+    Os lados Left/Right do Mixamo dependem da orientação do rig. Conferimos
+    pelo Samba: se o LeftHand estiver em x negativo, espelhamos as medidas.
   */
-  const collectReferenceSamples = () => {
+  if(
+    boneByName.get('LeftHand')
+      .getWorldPosition(new THREE.Vector3())
+      .x < rigCenter.x
+  ){
+    for(const name of Object.keys(MICHAEL_SIDE_JOINTS)){
+      const left = joints.get(`Left${name}`);
+      joints.set(`Left${name}`, joints.get(`Right${name}`));
+      joints.set(`Right${name}`, left);
+    }
+  }
 
-    samples.length = 0;
-    grid.clear();
+  const worldPosition = bone =>
+    bone.getWorldPosition(new THREE.Vector3());
 
+  const placeBoneAt = (
+    bone,
+    target
+  ) => {
+    bone.parent.updateMatrixWorld(true);
+    bone.position.copy(
+      bone.parent.worldToLocal(target.clone())
+    );
+    bone.updateMatrixWorld(true);
+  };
 
-    for(const mesh of referenceMeshes){
-
-      const positions =
-        mesh.geometry.getAttribute('position');
-
-      const skinIndex =
-        mesh.geometry.getAttribute('skinIndex');
-
-      const skinWeight =
-        mesh.geometry.getAttribute('skinWeight');
-
-      if(
-        !positions ||
-        !skinIndex ||
-        !skinWeight
-      ){
+  const scaleSubtree = (
+    bone,
+    factor
+  ) => {
+    for(const child of bone.children){
+      if(!child.isBone){
         continue;
       }
 
-      const sourceBones =
-        mesh.skeleton.bones;
-
-      const point =
-        new THREE.Vector3();
-
-      for(
-        let vertex = 0;
-        vertex < positions.count;
-        vertex++
-      ){
-
-        /* Posição já deformada: acompanha o rig quando ele é posado. */
-        mesh
-          .getVertexPosition(
-            vertex,
-            point
-          )
-          .applyMatrix4(mesh.matrixWorld)
-          .applyMatrix4(rigRootInverse);
-
-        const sourceIndices = [
-          skinIndex.getX(vertex),
-          skinIndex.getY(vertex),
-          skinIndex.getZ(vertex),
-          skinIndex.getW(vertex)
-        ];
-
-        const sourceWeights = [
-          skinWeight.getX(vertex),
-          skinWeight.getY(vertex),
-          skinWeight.getZ(vertex),
-          skinWeight.getW(vertex)
-        ];
-
-        const indices = [];
-        const weights = [];
-
-        for(let slot = 0; slot < 4; slot++){
-
-          const weight =
-            sourceWeights[slot] || 0;
-
-          if(weight <= 0){
-            continue;
-          }
-
-          const sourceBone =
-            sourceBones[sourceIndices[slot]];
-
-          if(!sourceBone){
-            continue;
-          }
-
-          const mappedIndex =
-            canonicalIndexByName.get(
-              sourceBone.name
-            );
-
-          if(mappedIndex == null){
-            continue;
-          }
-
-          indices.push(mappedIndex);
-          weights.push(weight);
-
-        }
-
-        if(indices.length){
-          samples.push({
-            x: point.x,
-            y: point.y,
-            z: point.z,
-            indices,
-            weights
-          });
-        }
-
-      }
-
+      child.position.multiplyScalar(factor);
+      scaleSubtree(child, factor);
     }
-
-    if(!samples.length){
-      throw new Error(
-        'Não foi possível obter pesos de skin do personagem base.'
-      );
-    }
-
-
-    for(const sample of samples){
-
-      const cx =
-        Math.floor(sample.x / cellSize);
-
-      const cy =
-        Math.floor(sample.y / cellSize);
-
-      const cz =
-        Math.floor(sample.z / cellSize);
-
-      const key =
-        cellKey(cx, cy, cz);
-
-      let bucket =
-        grid.get(key);
-
-      if(!bucket){
-        bucket = [];
-        grid.set(key, bucket);
-      }
-
-      bucket.push(sample);
-
-    }
-
   };
 
-  collectReferenceSamples();
+  /*
+    1) REST POSE = T-pose do Samba com as proporções do Michael
+    -----------------------------------------------------------
+    Os quaternions de repouso do Mixamo ficam intactos (é sobre eles que o
+    retarget das coreografias trabalha). Só mudamos posições: o tronco vai
+    para as articulações medidas e cada membro é alongado/encurtado para o
+    comprimento real do Michael, mantendo a direção da T-pose.
+  */
+  for(const name of Object.keys(MICHAEL_JOINTS)){
+    if(name === 'HeadTop_End'){
+      continue;
+    }
 
-  const hipsIndex =
-    canonicalIndexByName.get(
-      'mixamorigHips'
+    placeBoneAt(
+      boneByName.get(name),
+      joints.get(name)
+    );
+  }
+
+  for(const side of ['Left', 'Right']){
+
+    placeBoneAt(
+      boneByName.get(`${side}Shoulder`),
+      joints.get(`${side}Shoulder`)
     );
 
-  const nearestWeights = point => {
+    placeBoneAt(
+      boneByName.get(`${side}UpLeg`),
+      joints.get(`${side}UpLeg`)
+    );
 
-    const cx =
-      Math.floor(point.x / cellSize);
+    for(const [fromName, toName] of MICHAEL_AIM_CHAIN){
 
-    const cy =
-      Math.floor(point.y / cellSize);
+      const child =
+        boneByName.get(side + toName);
 
-    const cz =
-      Math.floor(point.z / cellSize);
-
-    const nearest = [];
-
-    const consider = sample => {
-
-      const dx = point.x - sample.x;
-      const dy = point.y - sample.y;
-      const dz = point.z - sample.z;
-
-      const distanceSq =
-        dx * dx +
-        dy * dy +
-        dz * dz;
-
-      let insertAt =
-        nearest.length;
-
-      while(
-        insertAt > 0 &&
-        nearest[insertAt - 1].distanceSq > distanceSq
-      ){
-        insertAt--;
-      }
-
-      nearest.splice(
-        insertAt,
-        0,
-        {
-          sample,
-          distanceSq
-        }
-      );
-
-      if(nearest.length > 6){
-        nearest.pop();
-      }
-
-    };
-
-    for(
-      let radius = 0;
-      radius <= 6;
-      radius++
-    ){
-
-      for(
-        let dx = -radius;
-        dx <= radius;
-        dx++
-      ){
-        for(
-          let dy = -radius;
-          dy <= radius;
-          dy++
-        ){
-          for(
-            let dz = -radius;
-            dz <= radius;
-            dz++
-          ){
-
-            if(
-              radius > 0 &&
-              Math.max(
-                Math.abs(dx),
-                Math.abs(dy),
-                Math.abs(dz)
-              ) !== radius
-            ){
-              continue;
-            }
-
-            const bucket =
-              grid.get(
-                cellKey(
-                  cx + dx,
-                  cy + dy,
-                  cz + dz
-                )
-              );
-
-            if(!bucket){
-              continue;
-            }
-
-            for(const sample of bucket){
-              consider(sample);
-            }
-
-          }
-        }
-      }
-
-      if(
-        nearest.length >= 6 &&
-        radius >= 1
-      ){
-        break;
-      }
-
-    }
-
-    if(!nearest.length){
-      return {
-        indices: [hipsIndex, 0, 0, 0],
-        weights: [1, 0, 0, 0]
-      };
-    }
-
-    const aggregate =
-      new Map();
-
-    for(const item of nearest){
-
-      const proximity =
-        1 /
-        Math.max(
-          Math.sqrt(item.distanceSq),
-          cellSize * 0.08
-        );
-
-      item.sample.indices.forEach(
-        (boneIndex, slot) => {
-          const weighted =
-            (item.sample.weights[slot] || 0) *
-            proximity;
-
-          aggregate.set(
-            boneIndex,
-            (aggregate.get(boneIndex) || 0) +
-            weighted
+      const targetLength =
+        joints.get(side + fromName)
+          .distanceTo(
+            joints.get(side + toName)
           );
+
+      const restLength =
+        child.position.length();
+
+      if(restLength <= 1e-6){
+        continue;
+      }
+
+      const factor =
+        targetLength / restLength;
+
+      child.position.multiplyScalar(factor);
+
+      /* A mão inteira (dedos) acompanha a escala da palma. */
+      if(toName === 'HandMiddle1'){
+        const hand =
+          boneByName.get(`${side}Hand`);
+
+        for(const finger of hand.children){
+          if(!finger.isBone){
+            continue;
+          }
+
+          if(finger !== child){
+            finger.position.multiplyScalar(factor);
+          }
+
+          scaleSubtree(finger, factor);
         }
-      );
-
-    }
-
-    const strongest =
-      [...aggregate.entries()]
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 4);
-
-    const total =
-      strongest.reduce(
-        (sum, [, weight]) => sum + weight,
-        0
-      ) || 1;
-
-    const indices = [0, 0, 0, 0];
-    const weights = [0, 0, 0, 0];
-
-    strongest.forEach(
-      ([boneIndex, weight], slot) => {
-        indices[slot] = boneIndex;
-        weights[slot] = weight / total;
       }
-    );
 
-    return {
-      indices,
-      weights
-    };
-
-  };
-
-  /*
-    Auto-rig anatômico do Michael
-    -----------------------------
-    A primeira versão transferia os pesos apenas pelo vértice mais próximo
-    do Samba. Isso funciona bem quando as duas malhas possuem exatamente a
-    mesma rest pose, mas o Michael está numa A-pose um pouco diferente. Em
-    braços/ombros alguns vértices acabavam recebendo influência do tronco e
-    da mão ao mesmo tempo, criando aqueles "braços elásticos".
-
-    Agora usamos os próprios segmentos do esqueleto Mixamo como referência:
-    tronco, braços, antebraços, mãos, pernas, pés, pescoço e cabeça. Assim
-    todos os vértices de um mesmo membro seguem uma cadeia anatômica coerente.
-    A transferência antiga fica somente como fallback caso um rig futuro não
-    possua os nomes padrão do Mixamo.
-  */
-  const boneLocalPosition = name => {
-
-    const index =
-      canonicalIndexByName.get(name);
-
-    if(index == null){
-      return null;
     }
 
-    const point =
-      new THREE.Vector3();
+  }
 
-    canonicalBones[index]
-      .getWorldPosition(point);
+  const headTop =
+    boneByName.get('HeadTop_End');
 
-    point.applyMatrix4(
-      rigRootInverse
-    );
+  headTop.position.setLength(
+    joints.get('Head')
+      .distanceTo(joints.get('HeadTop_End'))
+  );
 
-    return point;
-
-  };
-
-  /*
-    Ajuste proporcional do rig do Michael
-    --------------------------------------
-    A malha original já possui as proporções corretas (inclusive o alcance
-    dos braços). Portanto, antes de calcular os pesos de skin, alongamos o
-    esqueleto Mixamo oculto para coincidir com os braços REAIS do Michael.
-
-    Isso é diferente de escalar/deformar a malha para caber no Samba: a
-    geometria permanece exatamente no formato importado e apenas os pivôs do
-    rig são reposicionados. Assim o braço não encurta quando a animação gira
-    ombro/cotovelo/punho.
-  */
-  const michaelSurfacePoints = [];
-  const michaelPoint = new THREE.Vector3();
-
-  staticSource.traverse(object => {
-    if(
-      !object.isMesh ||
-      !object.geometry?.getAttribute('position')
-    ){
-      return;
-    }
-
-    const positions =
-      object.geometry.getAttribute('position');
-
-    /* Limita a amostragem para não pesar a abertura da fase em modelos grandes. */
-    const stride =
-      Math.max(
-        1,
-        Math.floor(positions.count / 18000)
-      );
-
-    for(
-      let vertex = 0;
-      vertex < positions.count;
-      vertex += stride
-    ){
-      michaelPoint
-        .fromBufferAttribute(positions, vertex)
-        .applyMatrix4(object.matrixWorld)
-        .applyMatrix4(fitMatrix);
-
-      michaelSurfacePoints.push(
-        michaelPoint.clone()
-      );
-    }
-  });
-
-  const michaelHeight = rigSize.y;
-  const michaelHalfSpan =
-    Math.max(
-      sourceSize.x * fitScale * 0.5,
-      michaelHeight * 0.20
-    );
-
-  const michaelCenterX = rigCenter.x;
-  const michaelCenterZ = rigCenter.z;
-  const michaelBottomY = rigBox.min.y;
-
-  const getBaseBoneWorld = name => {
-    const index = canonicalIndexByName.get(name);
-    if(index == null){
-      return null;
-    }
-
-    return canonicalBones[index]
-      .getWorldPosition(new THREE.Vector3())
-      .applyMatrix4(rigRootInverse);
-  };
-
-  const setBoneRigPosition = (
-    name,
-    targetRigPoint
-  ) => {
-    const index = canonicalIndexByName.get(name);
-    if(index == null){
-      return false;
-    }
-
-    const bone = jointNode(canonicalBones[index]);
-
-    /* targetRigPoint está no espaço local de rigRoot. */
-    const targetWorld =
-      targetRigPoint
-        .clone()
-        .applyMatrix4(rigRoot.matrixWorld);
-
-    if(bone.parent){
-      bone.parent.updateMatrixWorld(true);
-      bone.position.copy(
-        bone.parent.worldToLocal(
-          targetWorld.clone()
-        )
-      );
-    }else{
-      bone.position.copy(targetWorld);
-    }
-
-    bone.updateMatrixWorld(true);
-    return true;
-  };
-
-  /*
-    O rig base está em T-pose, mas a malha do Michael está em A-pose. As
-    animações são deltas relativos à T-pose: se a malha for presa a ossos
-    ainda horizontais, cada pose soma os ~36° da A-pose e os braços entram
-    no tronco. Por isso giramos a cadeia do braço até a A-pose da malha só
-    durante o bind e depois devolvemos as rotações originais (T-pose).
-  */
-  const restQuaternions =
-    new Map();
-
-  /*
-    O FBXLoader duplica cada osso Mixamo (nó externo + filho homônimo com
-    offset zero). A animação gira o nó externo, então é ele que posamos.
-  */
-  const jointNode = node => {
-    while(node.parent?.name === node.name){
-      node = node.parent;
-    }
-    return node;
-  };
-
-  const poseBoneTowards = (
-    name,
-    childName,
-    targetRigPoint
-  ) => {
-    const index = canonicalIndexByName.get(name);
-    const childIndex = canonicalIndexByName.get(childName);
-
-    if(index == null || childIndex == null){
-      return false;
-    }
-
-    const bone = jointNode(canonicalBones[index]);
-    const child = jointNode(canonicalBones[childIndex]);
-
-    let ancestor = child.parent;
-    while(ancestor && ancestor !== bone){
-      ancestor = ancestor.parent;
-    }
-
-    if(!ancestor){
-      return setBoneRigPosition(childName, targetRigPoint);
-    }
-
-    if(!restQuaternions.has(bone)){
-      restQuaternions.set(bone, bone.quaternion.clone());
-    }
-
-    bone.updateMatrixWorld(true);
-
-    const pivot =
-      bone.getWorldPosition(new THREE.Vector3());
-
-    const targetWorld =
-      targetRigPoint
-        .clone()
-        .applyMatrix4(rigRoot.matrixWorld);
-
-    /* Comprimento do Michael, direção da T-pose original. */
-    const length =
-      pivot.distanceTo(targetWorld) /
-      bone.getWorldScale(new THREE.Vector3()).x;
-
-    if(child.position.lengthSq() > 1e-12){
-      child.position.setLength(length);
-    }
-
-    bone.updateMatrixWorld(true);
-
-    const current =
-      child
-        .getWorldPosition(new THREE.Vector3())
-        .sub(pivot)
-        .normalize();
-
-    const desired =
-      targetWorld
-        .sub(pivot)
-        .normalize();
-
-    const worldDelta =
-      new THREE.Quaternion()
-        .setFromUnitVectors(current, desired);
-
-    const parentWorld =
-      bone.parent
-        ? bone.parent.getWorldQuaternion(new THREE.Quaternion())
-        : new THREE.Quaternion();
-
-    bone.quaternion.premultiply(
-      parentWorld
-        .clone()
-        .invert()
-        .multiply(worldDelta)
-        .multiply(parentWorld)
-    );
-
-    bone.updateMatrixWorld(true);
-    return true;
-  };
-
-  const percentile = (
-    values,
-    amount
-  ) => {
-    if(!values.length){
-      return null;
-    }
-
-    const sorted = [...values]
-      .sort((a, b) => a - b);
-
-    const index =
-      Math.max(
-        0,
-        Math.min(
-          sorted.length - 1,
-          Math.round(
-            (sorted.length - 1) * amount
-          )
-        )
-      );
-
-    return sorted[index];
-  };
-
-  const findHandTarget = sideSign => {
-    if(!michaelSurfacePoints.length){
-      return null;
-    }
-
-    const minUsefulY =
-      michaelBottomY +
-      michaelHeight * 0.42;
-
-    const maxUsefulY =
-      michaelBottomY +
-      michaelHeight * 0.84;
-
-    let candidates =
-      michaelSurfacePoints.filter(point => {
-        const outward =
-          sideSign *
-          (point.x - michaelCenterX);
-
-        return (
-          outward >= michaelHalfSpan * 0.72 &&
-          point.y >= minUsefulY &&
-          point.y <= maxUsefulY
-        );
-      });
-
-    if(!candidates.length){
-      candidates =
-        michaelSurfacePoints.filter(point =>
-          sideSign *
-            (point.x - michaelCenterX) >=
-              michaelHalfSpan * 0.62
-        );
-    }
-
-    if(!candidates.length){
-      return null;
-    }
-
-    /*
-      A ponta extrema contém dedos isolados. Usamos a região entre 72% e
-      96% do alcance lateral para posicionar o punho, evitando colocar o
-      osso Hand exatamente na ponta do dedo.
-    */
-    const outwardValues =
-      candidates.map(point =>
-        sideSign *
-        (point.x - michaelCenterX)
-      );
-
-    const outer72 =
-      percentile(outwardValues, 0.72) ??
-      michaelHalfSpan * 0.78;
-
-    const outer96 =
-      percentile(outwardValues, 0.96) ??
-      michaelHalfSpan * 0.94;
-
-    const wristBand =
-      candidates.filter(point => {
-        const outward =
-          sideSign *
-          (point.x - michaelCenterX);
-
-        return (
-          outward >= outer72 &&
-          outward <= outer96
-        );
-      });
-
-    const points =
-      wristBand.length
-        ? wristBand
-        : candidates;
-
-    const y =
-      percentile(
-        points.map(point => point.y),
-        0.50
-      );
-
-    const z =
-      percentile(
-        points.map(point => point.z),
-        0.50
-      );
-
-    return new THREE.Vector3(
-      michaelCenterX +
-        sideSign *
-        Math.min(
-          michaelHalfSpan * 0.91,
-          outer96
-        ),
-      THREE.MathUtils.clamp(
-        y ?? (
-          michaelBottomY +
-          michaelHeight * 0.56
-        ),
-        michaelBottomY + michaelHeight * 0.48,
-        michaelBottomY + michaelHeight * 0.68
-      ),
-      Number.isFinite(z)
-        ? z
-        : michaelCenterZ
-    );
-  };
-
-  /*
-    v2.9 — rig dos braços medido NA PRÓPRIA malha do Michael
-    ---------------------------------------------------------
-    O corpo/roupa do FBX já estão corretos. O defeito das versões anteriores
-    vinha de estimar os pivôs do braço a partir do personagem-base. Isso
-    colocava o ombro para dentro do tórax e fazia a animação girar o membro
-    ao redor de um ponto errado.
-
-    Agora os quatro pivôs importantes são medidos diretamente na geometria
-    estática do Michael, que chega em uma A-pose bem definida:
-      clavícula -> ombro (Arm) -> cotovelo (ForeArm) -> punho (Hand).
-
-    IMPORTANTE: o retargetPackedClips transfere rotações relativas à T-pose.
-    A cadeia é girada até a A-pose só durante o bind (poseBoneTowards) e
-    volta aos quaternions originais do Mixamo logo depois.
-  */
-
-  const median = values => {
-    if(!values.length){
-      return null;
-    }
-
-    const ordered = [...values]
-      .sort((a, b) => a - b);
-
-    const middle =
-      Math.floor(ordered.length / 2);
-
-    return ordered.length % 2
-      ? ordered[middle]
-      : (ordered[middle - 1] + ordered[middle]) * 0.5;
-  };
-
-  const findMichaelArmLandmark = (
-    sideSign,
-    outwardMin,
-    outwardMax,
-    heightMin,
-    heightMax
-  ) => {
-
-    const candidates =
-      michaelSurfacePoints.filter(point => {
-        const outward =
-          sideSign *
-          (point.x - michaelCenterX) /
-          michaelHalfSpan;
-
-        const height =
-          (point.y - michaelBottomY) /
-          michaelHeight;
-
-        return (
-          outward >= outwardMin &&
-          outward <= outwardMax &&
-          height >= heightMin &&
-          height <= heightMax
-        );
-      });
-
-    if(!candidates.length){
-      return null;
-    }
-
-    return new THREE.Vector3(
-      median(candidates.map(point => point.x)),
-      median(candidates.map(point => point.y)),
-      median(candidates.map(point => point.z))
-    );
-
-  };
-
-  const michaelArmGuides = new Map();
-
-  const fitArmToMichael = side => {
-
-    const prefix =
-      `mixamorig${side}`;
-
-    const baseHand =
-      getBaseBoneWorld(`${prefix}Hand`);
-
-    if(!baseHand){
-      return;
-    }
-
-    const sideSign =
-      Math.sign(
-        baseHand.x - michaelCenterX
-      ) ||
-      (side === 'Left' ? 1 : -1);
-
-    /*
-      v2.10 — template anatômico baseado na ficha aprovada do Michael
-      ----------------------------------------------------------------
-      Para estabilizar Thriller, usamos um template explícito derivado da
-      ficha visual aprovada pelo usuário. A malha do Michael já está correta;
-      o que precisa ficar estável é apenas a cadeia do braço.
-
-      O importante aqui é:
-      - ombro claramente para FORA do tórax;
-      - cotovelo no meio do alcance do braço;
-      - punho chegando perto da largura vista na ficha;
-      - leve avanço em Z para manter o braço ao lado/frente do corpo,
-        nunca colapsando para trás do tronco.
-    */
-    const shoulder =
-      new THREE.Vector3(
-        michaelCenterX +
-          sideSign * michaelHalfSpan * 0.16,
-        michaelBottomY + michaelHeight * 0.805,
-        michaelCenterZ + michaelHeight * 0.006
-      );
-
-    const arm =
-      new THREE.Vector3(
-        michaelCenterX +
-          sideSign * michaelHalfSpan * 0.30,
-        michaelBottomY + michaelHeight * 0.778,
-        michaelCenterZ + michaelHeight * 0.012
-      );
-
-    const foreArm =
-      new THREE.Vector3(
-        michaelCenterX +
-          sideSign * michaelHalfSpan * 0.58,
-        michaelBottomY + michaelHeight * 0.705,
-        michaelCenterZ + michaelHeight * 0.018
-      );
-
-    const hand =
-      new THREE.Vector3(
-        michaelCenterX +
-          sideSign * michaelHalfSpan * 0.83,
-        michaelBottomY + michaelHeight * 0.630,
-        michaelCenterZ + michaelHeight * 0.024
-      );
-
-    setBoneRigPosition(
-      `${prefix}Shoulder`,
-      shoulder
-    );
-
-    poseBoneTowards(
-      `${prefix}Shoulder`,
-      `${prefix}Arm`,
-      arm
-    );
-
-    poseBoneTowards(
-      `${prefix}Arm`,
-      `${prefix}ForeArm`,
-      foreArm
-    );
-
-    poseBoneTowards(
-      `${prefix}ForeArm`,
-      `${prefix}Hand`,
-      hand
-    );
-
-    michaelArmGuides.set(side, {
-      sideSign,
-      shoulder,
-      arm,
-      foreArm,
-      hand
-    });
-
-    console.info(
-      `Michael ${side}: template de braço aplicado`,
-      {
-        shoulder,
-        arm,
-        foreArm,
-        hand
-      }
-    );
-
-  };
-
-  fitArmToMichael('Left');
-  fitArmToMichael('Right');
   rigRoot.updateMatrixWorld(true);
-  collectReferenceSamples();
+
+  const restQuaternions =
+    new Map(
+      allBones.map(bone => [
+        bone,
+        bone.quaternion.clone()
+      ])
+    );
 
   /*
-    Pesos exclusivos dos braços — v2.9
-    -----------------------------------
-    Depois de medir os pivôs, classificamos a manga/braço/antebraço/mão por
-    proximidade da cadeia correspondente. Se um vértice entra nesse corredor,
-    ele NUNCA recebe Spine/Spine2 nem o braço oposto. É isso que impede o
-    membro de ser puxado para dentro do peito quando Thriller gira o ombro.
+    2) BIND POSE = A-pose do Michael
+    --------------------------------
+    Giramos temporariamente cada osso dos membros (swing mínimo) para que o
+    esqueleto fique exatamente dentro da malha. É nessa pose que os pesos e
+    as matrizes inversas de bind são calculados. Depois o esqueleto volta à
+    T-pose e a malha acompanha. Resultado: as rotações das animações são
+    aplicadas sobre a mesma rest pose para a qual foram retargetadas, e o
+    braço não afunda mais no tronco.
   */
-  const michaelArmClosestPoint =
-    new THREE.Vector3();
+  const swing = new THREE.Quaternion();
+  const boneWorldQuat = new THREE.Quaternion();
+  const parentWorldQuat = new THREE.Quaternion();
 
-  const michaelArmSegment =
-    new THREE.Vector3();
+  for(const side of ['Left', 'Right']){
+    for(const [fromName, toName] of MICHAEL_AIM_CHAIN){
 
-  const michaelArmOffset =
-    new THREE.Vector3();
+      const bone =
+        boneByName.get(side + fromName);
 
-  const distanceToMichaelSegment = (
+      const child =
+        boneByName.get(side + toName);
+
+      const origin =
+        worldPosition(bone);
+
+      const current =
+        worldPosition(child)
+          .sub(origin)
+          .normalize();
+
+      const desired =
+        joints.get(side + toName)
+          .clone()
+          .sub(origin)
+          .normalize();
+
+      swing.setFromUnitVectors(current, desired);
+
+      bone.getWorldQuaternion(boneWorldQuat);
+      bone.parent.getWorldQuaternion(parentWorldQuat);
+
+      bone.quaternion
+        .copy(parentWorldQuat.invert())
+        .multiply(swing)
+        .multiply(boneWorldQuat);
+
+      bone.updateMatrixWorld(true);
+
+    }
+  }
+
+  rigRoot.updateMatrixWorld(true);
+
+  /*
+    3) Pesos de skin por segmentos anatômicos
+    -----------------------------------------
+    Cada vértice pertence ao segmento de osso mais próximo. Perto de uma
+    articulação ele é dividido suavemente entre os dois ossos que se
+    encontram ali. No máximo dois ossos por vértice: nenhuma manga recebe
+    peso do tronco ou do braço oposto.
+  */
+  const bonePoint = name =>
+    worldPosition(boneByName.get(name));
+
+  const boneIndex =
+    new Map(
+      canonicalBones.map((bone, index) => [
+        bone,
+        index
+      ])
+    );
+
+  const indexOf = name =>
+    boneIndex.get(boneByName.get(name));
+
+  const segments =
+    MICHAEL_WEIGHT_SEGMENTS.map(
+      ([owner, fromName, toName]) => {
+
+        const from = bonePoint(fromName);
+        const to = bonePoint(toName);
+        const side = sideOf(owner);
+        const parentName =
+          MICHAEL_WEIGHT_PARENT[stripSide(owner)];
+
+        const endIsJoint =
+          Boolean(MICHAEL_WEIGHT_PARENT[stripSide(toName)]);
+
+        return {
+          owner,
+          ownerIndex: indexOf(owner),
+          from,
+          to,
+          axis: to.clone().sub(from),
+          length: from.distanceTo(to),
+          parentIndex:
+            parentName
+              ? indexOf(
+                  parentName === 'Hips' ||
+                  !MICHAEL_SIDE_JOINTS[parentName]
+                    ? parentName
+                    : side + parentName
+                )
+              : null,
+          startBlend:
+            (MICHAEL_JOINT_BLEND[stripSide(owner)] || 0) * unit,
+          childIndex:
+            endIsJoint
+              ? indexOf(toName)
+              : null,
+          endBlend:
+            endIsJoint
+              ? (MICHAEL_JOINT_BLEND[stripSide(toName)] || 0) * unit
+              : 0
+        };
+
+      }
+    );
+
+  const offset = new THREE.Vector3();
+  const closest = new THREE.Vector3();
+
+  const measure = (
     point,
-    from,
-    to
+    segment
   ) => {
 
-    michaelArmSegment.subVectors(to, from);
-
-    const lengthSq =
-      Math.max(
-        michaelArmSegment.lengthSq(),
-        1e-8
-      );
-
-    michaelArmOffset.subVectors(point, from);
+    offset.subVectors(point, segment.from);
 
     const t =
       THREE.MathUtils.clamp(
-        michaelArmOffset.dot(michaelArmSegment) /
-          lengthSq,
+        offset.dot(segment.axis) /
+          Math.max(segment.axis.lengthSq(), 1e-8),
         0,
         1
       );
 
-    michaelArmClosestPoint
-      .copy(from)
-      .addScaledVector(
-        michaelArmSegment,
-        t
-      );
+    closest
+      .copy(segment.from)
+      .addScaledVector(segment.axis, t);
 
     return {
       t,
-      distance:
-        point.distanceTo(
-          michaelArmClosestPoint
-        )
+      distance: point.distanceTo(closest)
     };
 
   };
 
-  const packWeights = entries => {
+  const blendWeight = value =>
+    THREE.MathUtils.smootherstep(value, 0, 1);
 
-    const filtered =
-      entries
-        .filter(([, weight]) =>
-          Number.isFinite(weight) &&
-          weight > 0.00001
-        )
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 4);
+  const vertexWeights = point => {
 
-    const total =
-      filtered.reduce(
-        (sum, [, weight]) =>
-          sum + weight,
-        0
-      ) || 1;
+    let best = null;
+    let bestT = 0;
+    let bestDistance = Infinity;
 
-    const indices = [0, 0, 0, 0];
-    const weights = [0, 0, 0, 0];
+    for(const segment of segments){
+      const { t, distance } =
+        measure(point, segment);
 
-    filtered.forEach(
-      ([index, weight], slot) => {
-        indices[slot] = index;
-        weights[slot] = weight / total;
+      if(distance < bestDistance){
+        best = segment;
+        bestT = t;
+        bestDistance = distance;
       }
-    );
+    }
 
-    return { indices, weights };
+    const along =
+      bestT * best.length;
 
-  };
+    const remaining =
+      (1 - bestT) * best.length;
 
-  const michaelArmWeights = point => {
-
-    const normalizedHeight =
-      (point.y - michaelBottomY) /
-      michaelHeight;
-
+    /* Início do segmento: transição com o osso pai. */
     if(
-      normalizedHeight < 0.52 ||
-      normalizedHeight > 0.85
+      best.parentIndex != null &&
+      best.startBlend > 0 &&
+      along < best.startBlend
     ){
-      return null;
+      const own =
+        blendWeight(
+          0.5 + 0.5 * along / best.startBlend
+        );
+
+      return [
+        [best.ownerIndex, own],
+        [best.parentIndex, 1 - own]
+      ];
     }
 
-    for(const [side, guide] of michaelArmGuides){
-
-      const outward =
-        guide.sideSign *
-        (point.x - michaelCenterX) /
-        michaelHalfSpan;
-
-      /*
-        Faixa lateral do braço segundo a ficha de referência.
-        0.20 ainda captura a raiz da manga; >1.10 já é ruído externo.
-      */
-      if(outward < 0.20 || outward > 1.10){
-        continue;
-      }
-
-      const prefix =
-        `mixamorig${side}`;
-
-      const shoulderIndex =
-        canonicalIndexByName.get(
-          `${prefix}Shoulder`
-        );
-
-      const armIndex =
-        canonicalIndexByName.get(
-          `${prefix}Arm`
-        );
-
-      const foreArmIndex =
-        canonicalIndexByName.get(
-          `${prefix}ForeArm`
-        );
-
-      const handIndex =
-        canonicalIndexByName.get(
-          `${prefix}Hand`
-        );
-
-      if(
-        shoulderIndex == null ||
-        armIndex == null ||
-        foreArmIndex == null ||
-        handIndex == null
-      ){
-        continue;
-      }
-
-      const shoulderSegment =
-        distanceToMichaelSegment(
-          point,
-          guide.shoulder,
-          guide.arm
-        );
-
-      const upper =
-        distanceToMichaelSegment(
-          point,
-          guide.arm,
-          guide.foreArm
-        );
-
-      const lower =
-        distanceToMichaelSegment(
-          point,
-          guide.foreArm,
-          guide.hand
-        );
-
-      const handDistance =
-        point.distanceTo(guide.hand);
-
-      const shoulderRadius =
-        michaelHeight * 0.092;
-
-      const armRadius =
-        michaelHeight * 0.076;
-
-      const handRadius =
-        michaelHeight * 0.068;
-
-      /*
-        A parte mais próxima do tórax ainda precisa seguir a clavícula/ombro.
-        Damos um pequeno bônus ao segmento do ombro para impedir que a manga
-        caia para dentro do peito durante rotações fortes do Thriller.
-      */
-      const weightedShoulder =
-        shoulderSegment.distance * 0.84;
-
-      const closest =
-        Math.min(
-          weightedShoulder,
-          upper.distance,
-          lower.distance,
-          handDistance
-        );
-
-      if(
-        closest >
-        Math.max(
-          shoulderRadius,
-          armRadius,
-          handRadius
-        )
-      ){
-        continue;
-      }
-
-      if(closest === weightedShoulder){
-        const blendToArm =
-          THREE.MathUtils.smoothstep(
-            shoulderSegment.t,
-            0.34,
-            1.0
-          );
-
-        return packWeights([
-          [
-            shoulderIndex,
-            0.72 * (1 - blendToArm)
-          ],
-          [
-            armIndex,
-            0.28 + 0.72 * blendToArm
-          ]
-        ]);
-      }
-
-      if(closest === upper.distance){
-        const elbowBlend =
-          THREE.MathUtils.smoothstep(
-            upper.t,
-            0.68,
-            1.0
-          );
-
-        return packWeights([
-          [
-            armIndex,
-            1 - elbowBlend
-          ],
-          [
-            foreArmIndex,
-            elbowBlend
-          ]
-        ]);
-      }
-
-      if(closest === lower.distance){
-        const wristBlend =
-          THREE.MathUtils.smoothstep(
-            lower.t,
-            0.70,
-            1.0
-          );
-
-        return packWeights([
-          [
-            foreArmIndex,
-            1 - wristBlend
-          ],
-          [
-            handIndex,
-            wristBlend
-          ]
-        ]);
-      }
-
-      return packWeights([
-        [handIndex, 1]
-      ]);
-
-    }
-
-    return null;
-
-  };
-
-  const anatomicalSegments = [];
-  const anatomicalPoints = [];
-
-  const addSegment = (
-    fromName,
-    toName,
-    influenceName = fromName
-  ) => {
-
-    const from =
-      boneLocalPosition(fromName);
-
-    const to =
-      boneLocalPosition(toName);
-
-    const boneIndex =
-      canonicalIndexByName.get(
-        influenceName
-      );
-
-    const childIndex =
-      canonicalIndexByName.get(
-        toName
-      );
-
+    /* Fim do segmento: transição com o osso filho. */
     if(
-      !from ||
-      !to ||
-      boneIndex == null
+      best.childIndex != null &&
+      best.endBlend > 0 &&
+      remaining < best.endBlend
     ){
-      return;
+      const child =
+        blendWeight(
+          0.5 - 0.5 * remaining / best.endBlend
+        );
+
+      return [
+        [best.ownerIndex, 1 - child],
+        [best.childIndex, child]
+      ];
     }
 
-    anatomicalSegments.push({
-      from,
-      to,
-      boneIndex,
-      childIndex:
-        childIndex == null
-          ? boneIndex
-          : childIndex,
-      midpointX:
-        (from.x + to.x) * 0.5,
-      name: influenceName
-    });
+    return [
+      [best.ownerIndex, 1]
+    ];
 
   };
-
-  const addPointInfluence = name => {
-
-    const point =
-      boneLocalPosition(name);
-
-    const boneIndex =
-      canonicalIndexByName.get(name);
-
-    if(
-      !point ||
-      boneIndex == null
-    ){
-      return;
-    }
-
-    anatomicalPoints.push({
-      point,
-      boneIndex,
-      name
-    });
-
-  };
-
-  /* Eixo central. */
-  addSegment('mixamorigHips', 'mixamorigSpine');
-  addSegment('mixamorigSpine', 'mixamorigSpine1');
-  addSegment('mixamorigSpine1', 'mixamorigSpine2');
-  addSegment('mixamorigSpine2', 'mixamorigNeck');
-  addSegment('mixamorigNeck', 'mixamorigHead');
-
-  /* Braço esquerdo. */
-  addSegment('mixamorigSpine2', 'mixamorigLeftShoulder', 'mixamorigSpine2');
-  addSegment('mixamorigLeftShoulder', 'mixamorigLeftArm');
-  addSegment('mixamorigLeftArm', 'mixamorigLeftForeArm');
-  addSegment('mixamorigLeftForeArm', 'mixamorigLeftHand');
-
-  /* Braço direito. */
-  addSegment('mixamorigSpine2', 'mixamorigRightShoulder', 'mixamorigSpine2');
-  addSegment('mixamorigRightShoulder', 'mixamorigRightArm');
-  addSegment('mixamorigRightArm', 'mixamorigRightForeArm');
-  addSegment('mixamorigRightForeArm', 'mixamorigRightHand');
-
-  /* Pernas. */
-  addSegment('mixamorigHips', 'mixamorigLeftUpLeg', 'mixamorigHips');
-  addSegment('mixamorigLeftUpLeg', 'mixamorigLeftLeg');
-  addSegment('mixamorigLeftLeg', 'mixamorigLeftFoot');
-  addSegment('mixamorigLeftFoot', 'mixamorigLeftToeBase');
-
-  addSegment('mixamorigHips', 'mixamorigRightUpLeg', 'mixamorigHips');
-  addSegment('mixamorigRightUpLeg', 'mixamorigRightLeg');
-  addSegment('mixamorigRightLeg', 'mixamorigRightFoot');
-  addSegment('mixamorigRightFoot', 'mixamorigRightToeBase');
-
-  /* Pontas importantes: evitam cabeça/mãos/pés ficarem presos ao pai. */
-  [
-    'mixamorigHead',
-    'mixamorigLeftHand',
-    'mixamorigRightHand',
-    'mixamorigLeftFoot',
-    'mixamorigRightFoot',
-    'mixamorigLeftToeBase',
-    'mixamorigRightToeBase'
-  ].forEach(addPointInfluence);
-
-  const segmentClosestPoint =
-    new THREE.Vector3();
-
-  const segmentVector =
-    new THREE.Vector3();
-
-  const pointVector =
-    new THREE.Vector3();
-
-  /*
-    Região do ombro/ombreira: pesos copiados do corpo de referência já
-    posado na A-pose do Michael (transição suave feita pelo artista entre
-    tronco, clavícula e braço).
-  */
-  const SHOULDER_ZONE = {
-    outwardMin: 0.04,
-    outwardMax: 0.17,
-    heightMin: 0.68,
-    heightMax: 0.90
-  };
-
-  const inShoulderZone = point => {
-    const outward =
-      Math.abs(point.x - michaelCenterX) /
-      michaelHeight;
-
-    const height =
-      (point.y - michaelBottomY) /
-      michaelHeight;
-
-    return (
-      outward >= SHOULDER_ZONE.outwardMin &&
-      outward <= SHOULDER_ZONE.outwardMax &&
-      height >= SHOULDER_ZONE.heightMin &&
-      height <= SHOULDER_ZONE.heightMax
-    );
-  };
-
-  const anatomicalWeights = point => {
-
-    if(inShoulderZone(point)){
-      return nearestWeights(point);
-    }
-
-    const dedicatedArmWeights =
-      michaelArmWeights(point);
-
-    if(dedicatedArmWeights){
-      return dedicatedArmWeights;
-    }
-
-    if(anatomicalSegments.length < 10){
-      return nearestWeights(point);
-    }
-
-    const aggregate =
-      new Map();
-
-    const addWeight = (
-      boneIndex,
-      weight
-    ) => {
-
-      if(
-        boneIndex == null ||
-        !Number.isFinite(weight) ||
-        weight <= 0
-      ){
-        return;
-      }
-
-      aggregate.set(
-        boneIndex,
-        (aggregate.get(boneIndex) || 0) +
-          weight
-      );
-
-    };
-
-    const epsilon =
-      Math.max(
-        rigSize.y * 0.012,
-        0.0001
-      );
-
-    for(const segment of anatomicalSegments){
-
-      segmentVector
-        .subVectors(
-          segment.to,
-          segment.from
-        );
-
-      const lengthSq =
-        Math.max(
-          segmentVector.lengthSq(),
-          1e-8
-        );
-
-      pointVector
-        .subVectors(
-          point,
-          segment.from
-        );
-
-      const t =
-        THREE.MathUtils.clamp(
-          pointVector.dot(segmentVector) /
-            lengthSq,
-          0,
-          1
-        );
-
-      segmentClosestPoint
-        .copy(segment.from)
-        .addScaledVector(
-          segmentVector,
-          t
-        );
-
-      let distance =
-        point.distanceTo(
-          segmentClosestPoint
-        );
-
-      /*
-        Impede que um vértice do lado esquerdo seja capturado por um membro
-        do lado direito (e vice-versa), sem depender da convenção de sinal X.
-      */
-      const memberIsSide =
-        /Left|Right/.test(
-          segment.name
-        );
-
-      if(
-        memberIsSide &&
-        Math.abs(point.x) >
-          rigSize.x * 0.045 &&
-        Math.abs(segment.midpointX) >
-          rigSize.x * 0.035 &&
-        Math.sign(point.x) !==
-          Math.sign(segment.midpointX)
-      ){
-        distance +=
-          rigSize.y * 0.65;
-      }
-
-      /*
-        Potência alta = influência local. É justamente o que evita que mão e
-        tronco puxem simultaneamente o mesmo triângulo quando os braços giram.
-      */
-      const proximity =
-        1 /
-        Math.pow(
-          Math.max(
-            distance,
-            epsilon
-          ),
-          3.15
-        );
-
-      /*
-        No final de cada segmento fazemos uma pequena transição para o osso
-        filho, suavizando cotovelo, joelho, punho e tornozelo.
-      */
-      const childBlend =
-        THREE.MathUtils.smoothstep(
-          t,
-          0.76,
-          1
-        ) * 0.42;
-
-      addWeight(
-        segment.boneIndex,
-        proximity *
-          (1 - childBlend)
-      );
-
-      addWeight(
-        segment.childIndex,
-        proximity * childBlend
-      );
-
-    }
-
-    for(const influence of anatomicalPoints){
-
-      let distance =
-        point.distanceTo(
-          influence.point
-        );
-
-      const memberIsSide =
-        /Left|Right/.test(
-          influence.name
-        );
-
-      if(
-        memberIsSide &&
-        Math.abs(point.x) >
-          rigSize.x * 0.045 &&
-        Math.abs(influence.point.x) >
-          rigSize.x * 0.035 &&
-        Math.sign(point.x) !==
-          Math.sign(influence.point.x)
-      ){
-        distance +=
-          rigSize.y * 0.65;
-      }
-
-      const proximity =
-        0.72 /
-        Math.pow(
-          Math.max(
-            distance,
-            epsilon * 1.25
-          ),
-          3.15
-        );
-
-      addWeight(
-        influence.boneIndex,
-        proximity
-      );
-
-    }
-
-    const strongest =
-      [...aggregate.entries()]
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 4);
-
-    if(!strongest.length){
-      return nearestWeights(point);
-    }
-
-    /*
-      Evita micro-influências distantes. Elas eram outra fonte de vértices
-      esticados em animações de grande amplitude.
-    */
-    const maxWeight =
-      strongest[0][1] || 1;
-
-    const filtered =
-      strongest.filter(
-        ([, weight], index) =>
-          index === 0 ||
-          weight >= maxWeight * 0.055
-      );
-
-    const total =
-      filtered.reduce(
-        (sum, [, weight]) =>
-          sum + weight,
-        0
-      ) || 1;
-
-    const indices = [0, 0, 0, 0];
-    const weights = [0, 0, 0, 0];
-
-    filtered.forEach(
-      ([boneIndex, weight], slot) => {
-        indices[slot] = boneIndex;
-        weights[slot] = weight / total;
-      }
-    );
-
-    return {
-      indices,
-      weights
-    };
-
-  };
-
-  const michaelMeshes = [];
-
-  staticSource.traverse(object => {
-    if(
-      object.isMesh &&
-      object.geometry?.getAttribute('position')
-    ){
-      michaelMeshes.push(object);
-    }
-  });
-
-  if(!michaelMeshes.length){
-    throw new Error(
-      'O arquivo Michael não contém uma malha renderizável.'
-    );
-  }
 
   /*
     Suavização de normais sem destruir UVs
     --------------------------------------
-    O FBX do Michael vem com vários vértices duplicados por UV/material.
-    Recalcular normals de forma comum deixa cada triângulo "facetado".
-    Aqui somamos as normais das faces que ocupam a MESMA posição no espaço,
-    inclusive quando os vértices são duplicados. Assim a textura continua
-    intacta, mas o corpo volta a ter o sombreado suave visto no preview.
+    O FBX do Michael vem com vértices duplicados por UV/material. Somamos as
+    normais de tudo que ocupa a MESMA posição, preservando as UVs e evitando
+    o aspecto facetado sob as luzes da fase.
   */
   const smoothNormalsAcrossPositionSeams = geometry => {
 
@@ -1767,27 +678,31 @@ function buildAutoRiggedThrillerSkin(
         1e-6
       );
 
-    const keyForVertex = vertex => {
-      const x = positions.getX(vertex);
-      const y = positions.getY(vertex);
-      const z = positions.getZ(vertex);
-
-      return [
-        Math.round(x / tolerance),
-        Math.round(y / tolerance),
-        Math.round(z / tolerance)
+    const keyForVertex = vertex =>
+      [
+        Math.round(positions.getX(vertex) / tolerance),
+        Math.round(positions.getY(vertex) / tolerance),
+        Math.round(positions.getZ(vertex) / tolerance)
       ].join('|');
-    };
 
     const normalByPosition =
       new Map();
 
-    /*
-      Primeiro preferimos as normais originais do FBX. Elas já sabem quais
-      faces são frente/costas; apenas unificamos os vértices duplicados de
-      uma mesma posição. Isso é mais fiel ao preview do modelo do que
-      recalcular toda a orientação do zero.
-    */
+    const accumulate = (
+      vertex,
+      vector
+    ) => {
+      const key = keyForVertex(vertex);
+      let sum = normalByPosition.get(key);
+
+      if(!sum){
+        sum = new THREE.Vector3();
+        normalByPosition.set(key, sum);
+      }
+
+      sum.add(vector);
+    };
+
     const importedNormals =
       geometry.getAttribute('normal');
 
@@ -1799,99 +714,47 @@ function buildAutoRiggedThrillerSkin(
         vertex < positions.count;
         vertex++
       ){
-        imported
-          .fromBufferAttribute(
-            importedNormals,
-            vertex
-          )
-          .normalize();
-
-        const key = keyForVertex(vertex);
-        let sum = normalByPosition.get(key);
-
-        if(!sum){
-          sum = new THREE.Vector3();
-          normalByPosition.set(key, sum);
-        }
-
-        sum.add(imported);
+        accumulate(
+          vertex,
+          imported
+            .fromBufferAttribute(importedNormals, vertex)
+            .normalize()
+        );
       }
-    }
+    }else{
+      const a = new THREE.Vector3();
+      const b = new THREE.Vector3();
+      const c = new THREE.Vector3();
+      const faceNormal = new THREE.Vector3();
+      const index = geometry.index;
+      const count = index ? index.count : positions.count;
 
-    const a = new THREE.Vector3();
-    const b = new THREE.Vector3();
-    const c = new THREE.Vector3();
-    const ab = new THREE.Vector3();
-    const ac = new THREE.Vector3();
-    const faceNormal = new THREE.Vector3();
+      for(let item = 0; item + 2 < count; item += 3){
+        const ia = index ? index.getX(item) : item;
+        const ib = index ? index.getX(item + 1) : item + 1;
+        const ic = index ? index.getX(item + 2) : item + 2;
 
-    const addFace = (
-      ia,
-      ib,
-      ic
-    ) => {
+        a.fromBufferAttribute(positions, ia);
+        b.fromBufferAttribute(positions, ib);
+        c.fromBufferAttribute(positions, ic);
 
-      a.fromBufferAttribute(positions, ia);
-      b.fromBufferAttribute(positions, ib);
-      c.fromBufferAttribute(positions, ic);
+        faceNormal.crossVectors(
+          b.sub(a),
+          c.sub(a)
+        );
 
-      ab.subVectors(b, a);
-      ac.subVectors(c, a);
-      faceNormal.crossVectors(ab, ac);
-
-      /* Área zero não deve contaminar o acumulador. */
-      if(faceNormal.lengthSq() <= 1e-14){
-        return;
-      }
-
-      for(const vertex of [ia, ib, ic]){
-        const key = keyForVertex(vertex);
-        let sum = normalByPosition.get(key);
-
-        if(!sum){
-          sum = new THREE.Vector3();
-          normalByPosition.set(key, sum);
+        if(faceNormal.lengthSq() <= 1e-14){
+          continue;
         }
 
-        /* Não normalizamos aqui: faces maiores têm peso proporcional. */
-        sum.add(faceNormal);
-      }
-    };
-
-    if(!importedNormals){
-      if(geometry.index){
-        const index = geometry.index;
-
-        for(
-          let item = 0;
-          item + 2 < index.count;
-          item += 3
-        ){
-          addFace(
-            index.getX(item),
-            index.getX(item + 1),
-            index.getX(item + 2)
-          );
-        }
-      }else{
-        for(
-          let vertex = 0;
-          vertex + 2 < positions.count;
-          vertex += 3
-        ){
-          addFace(
-            vertex,
-            vertex + 1,
-            vertex + 2
-          );
-        }
+        accumulate(ia, faceNormal);
+        accumulate(ib, faceNormal);
+        accumulate(ic, faceNormal);
       }
     }
 
     const normalArray =
-      new Float32Array(
-        positions.count * 3
-      );
+      new Float32Array(positions.count * 3);
 
     const normal =
       new THREE.Vector3();
@@ -1901,13 +764,9 @@ function buildAutoRiggedThrillerSkin(
       vertex < positions.count;
       vertex++
     ){
-      const sum =
-        normalByPosition.get(
-          keyForVertex(vertex)
-        );
-
       normal.copy(
-        sum || new THREE.Vector3(0, 1, 0)
+        normalByPosition.get(keyForVertex(vertex)) ||
+        new THREE.Vector3(0, 1, 0)
       );
 
       if(normal.lengthSq() > 1e-12){
@@ -1916,22 +775,94 @@ function buildAutoRiggedThrillerSkin(
         normal.set(0, 1, 0);
       }
 
-      normal.toArray(
-        normalArray,
-        vertex * 3
-      );
+      normal.toArray(normalArray, vertex * 3);
     }
 
     geometry.setAttribute(
       'normal',
-      new THREE.Float32BufferAttribute(
-        normalArray,
-        3
-      )
+      new THREE.Float32BufferAttribute(normalArray, 3)
     );
-
-    geometry.getAttribute('normal').needsUpdate = true;
   };
+
+  const prepareMichaelMaterial = sourceMaterial => {
+
+    if(!sourceMaterial){
+      return sourceMaterial;
+    }
+
+    const material =
+      sourceMaterial.clone();
+
+    /*
+      O FBX original conecta a própria textura de cor ao TransparencyFactor.
+      O FBXLoader interpreta isso como alphaMap e deixa o personagem
+      translúcido. Preservamos a textura RGB e removemos a transparência.
+    */
+    material.transparent = false;
+    material.opacity = 1;
+    material.alphaMap = null;
+    material.alphaTest = 0;
+    material.depthWrite = true;
+    material.depthTest = true;
+    material.premultipliedAlpha = false;
+    material.blending = THREE.NormalBlending;
+    material.flatShading = false;
+    material.vertexColors = false;
+
+    if('shininess' in material){
+      material.shininess = Math.min(
+        material.shininess ?? 18,
+        18
+      );
+    }
+
+    if(material.specular?.setHex){
+      material.specular.setHex(0x181818);
+    }
+
+    if('roughness' in material){
+      material.roughness = Math.max(
+        material.roughness ?? 0.72,
+        0.72
+      );
+    }
+
+    if('metalness' in material){
+      material.metalness = Math.min(
+        material.metalness ?? 0,
+        0.04
+      );
+    }
+
+    if('transmission' in material){
+      material.transmission = 0;
+    }
+
+    if(material.color){
+      material.color.set(0xffffff);
+    }
+
+    if(material.map){
+      material.map.colorSpace =
+        THREE.SRGBColorSpace;
+      material.map.needsUpdate = true;
+    }
+
+    material.userData = {
+      ...material.userData,
+      michaelThrillerMaterial: true
+    };
+
+    material.needsUpdate = true;
+
+    return material;
+
+  };
+
+  const michaelCenterX = rigCenter.x;
+  const michaelBottomY = rigBox.min.y;
+  const michaelHeight = rigSize.y;
+  const michaelHalfSpan = sourceSize.x * fitScale * 0.5;
 
   /*
     Manga até o punho
@@ -1999,7 +930,7 @@ function buildAutoRiggedThrillerSkin(
         continue;
       }
 
-      const side = Math.sign(point.x - michaelCenterX);
+      const side = point.x > michaelCenterX ? 'positive' : 'negative';
 
       if(!sides.has(side)){
         sides.set(side, []);
@@ -2016,17 +947,22 @@ function buildAutoRiggedThrillerSkin(
 
     for(const [side, vertices] of sides){
 
-      const guide =
-        [...michaelArmGuides.values()]
-          .find(item => item.sideSign === side);
+      /* Lado do mundo -> cadeia medida do braço daquele lado. */
+      const prefix =
+        ['Left', 'Right'].find(name =>
+          (joints.get(`${name}Hand`).x > michaelCenterX) ===
+          (side === 'positive')
+        );
 
-      if(!guide || vertices.length < 6){
+      if(!prefix || vertices.length < 6){
         continue;
       }
 
-      /* Eixo real do antebraço: centroides da metade do cotovelo e do punho. */
+      const elbow = joints.get(`${prefix}ForeArm`);
+      const wrist = joints.get(`${prefix}Hand`);
+
       const direction =
-        guide.hand.clone().sub(guide.foreArm).normalize();
+        wrist.clone().sub(elbow).normalize();
 
       const projected =
         vertices
@@ -2035,13 +971,14 @@ function buildAutoRiggedThrillerSkin(
             along:
               point
                 .fromBufferAttribute(positions, vertex)
-                .sub(guide.foreArm)
+                .sub(elbow)
                 .dot(direction)
           }))
           .sort((a, b) => a.along - b.along);
 
       const middle = Math.floor(projected.length / 2);
 
+      /* Eixo real do antebraço: centroides da metade do cotovelo e do punho. */
       const centroid = (items, target) => {
         target.set(0, 0, 0);
         for(const { vertex } of items){
@@ -2093,10 +1030,10 @@ function buildAutoRiggedThrillerSkin(
   };
 
   /*
-    A ombreira do FBX é um bloco plano (~0.85 da altura) que termina num
-    degrau de ~7% da altura sobre o braço. Em A-pose o degrau some na linha
-    do braço; com o braço abaixado vira uma ponta. Arredondamos o bloco:
-    o excesso acima do topo do braço diminui em direção à ponta do ombro.
+    A ombreira do FBX é um bloco plano que termina num degrau sobre o braço.
+    Em A-pose o degrau some na linha do braço; com o braço abaixado vira uma
+    ponta. Arredondamos o bloco: o excesso acima do topo do braço diminui em
+    direção à ponta do ombro.
   */
   const SHOULDER_PAD = {
     base: 0.775,
@@ -2152,44 +1089,47 @@ function buildAutoRiggedThrillerSkin(
 
   };
 
+  const michaelMeshes = [];
+
+  staticSource.traverse(object => {
+    if(
+      object.isMesh &&
+      object.geometry?.getAttribute('position')
+    ){
+      michaelMeshes.push(object);
+    }
+  });
+
+  if(!michaelMeshes.length){
+    throw new Error(
+      'O FBX do Michael não possui malha.'
+    );
+  }
+
   const newMeshes = [];
+  const point = new THREE.Vector3();
 
   for(const sourceMesh of michaelMeshes){
 
     const geometry =
       sourceMesh.geometry.clone();
 
-    geometry.applyMatrix4(
-      sourceMesh.matrixWorld
-    );
-
-    geometry.applyMatrix4(
-      fitMatrix
-    );
+    geometry.applyMatrix4(sourceMesh.matrixWorld);
+    geometry.applyMatrix4(fitMatrix);
 
     extendMichaelSleeves(geometry);
     softenShoulderPads(geometry);
 
-    /* Mantém a silhueta original, mas remove o aspecto triangular/facetado. */
-    smoothNormalsAcrossPositionSeams(
-      geometry
-    );
+    smoothNormalsAcrossPositionSeams(geometry);
 
     const positions =
       geometry.getAttribute('position');
 
     const indicesArray =
-      new Uint16Array(
-        positions.count * 4
-      );
+      new Uint16Array(positions.count * 4);
 
     const weightsArray =
-      new Float32Array(
-        positions.count * 4
-      );
-
-    const point =
-      new THREE.Vector3();
+      new Float32Array(positions.count * 4);
 
     for(
       let vertex = 0;
@@ -2197,136 +1137,36 @@ function buildAutoRiggedThrillerSkin(
       vertex++
     ){
 
-      point.fromBufferAttribute(
-        positions,
-        vertex
+      point
+        .fromBufferAttribute(positions, vertex)
+        .applyMatrix4(rigRoot.matrixWorld);
+
+      vertexWeights(point).forEach(
+        ([index, weight], slot) => {
+          indicesArray[vertex * 4 + slot] = index;
+          weightsArray[vertex * 4 + slot] = weight;
+        }
       );
-
-      const assigned =
-        anatomicalWeights(point);
-
-      for(let slot = 0; slot < 4; slot++){
-        indicesArray[vertex * 4 + slot] =
-          assigned.indices[slot] || 0;
-
-        weightsArray[vertex * 4 + slot] =
-          assigned.weights[slot] || 0;
-      }
 
     }
 
     geometry.setAttribute(
       'skinIndex',
-      new THREE.Uint16BufferAttribute(
-        indicesArray,
-        4
-      )
+      new THREE.Uint16BufferAttribute(indicesArray, 4)
     );
 
     geometry.setAttribute(
       'skinWeight',
-      new THREE.Float32BufferAttribute(
-        weightsArray,
-        4
-      )
+      new THREE.Float32BufferAttribute(weightsArray, 4)
     );
 
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
 
-    const prepareMichaelMaterial = sourceMaterial => {
-
-      if(!sourceMaterial){
-        return sourceMaterial;
-      }
-
-      const material =
-        sourceMaterial.clone();
-
-      /*
-        O FBX original conecta a própria textura de cor também ao canal
-        TransparencyFactor. O FBXLoader interpreta isso como alphaMap e deixa
-        o personagem translúcido. Para o jogo a roupa/corpo devem ser sólidos:
-        preservamos a textura RGB, mas removemos qualquer transparência do
-        material do Michael.
-      */
-      material.transparent = false;
-      material.opacity = 1;
-      material.alphaMap = null;
-      material.alphaTest = 0;
-      material.depthWrite = true;
-      material.depthTest = true;
-      material.premultipliedAlpha = false;
-      material.blending = THREE.NormalBlending;
-
-      /*
-        O preview original usa sombreado suave. Alguns materiais do FBX
-        carregam vertex colors/flat shading que, sob as luzes fortes do jogo,
-        viram triângulos claros/escuros. Para o Michael a cor deve vir da
-        textura original + iluminação da fase, não das cores por vértice.
-      */
-      material.flatShading = false;
-      material.vertexColors = false;
-
-      if('shininess' in material){
-        material.shininess = Math.min(
-          material.shininess ?? 18,
-          18
-        );
-      }
-
-      if(material.specular?.setHex){
-        material.specular.setHex(0x181818);
-      }
-
-      if('roughness' in material){
-        material.roughness = Math.max(
-          material.roughness ?? 0.72,
-          0.72
-        );
-      }
-
-      if('metalness' in material){
-        material.metalness = Math.min(
-          material.metalness ?? 0,
-          0.04
-        );
-      }
-
-      if('transmission' in material){
-        material.transmission = 0;
-      }
-
-      if(material.color){
-        /* Branco = mostra a cor original da textura sem dessaturar o vermelho. */
-        material.color.set(0xffffff);
-      }
-
-      if(material.map){
-        material.map.colorSpace =
-          THREE.SRGBColorSpace;
-        material.map.needsUpdate = true;
-      }
-
-      material.userData = {
-        ...material.userData,
-        michaelThrillerMaterial: true
-      };
-
-      material.needsUpdate = true;
-
-      return material;
-
-    };
-
     const material =
       Array.isArray(sourceMesh.material)
-        ? sourceMesh.material.map(
-            prepareMichaelMaterial
-          )
-        : prepareMichaelMaterial(
-            sourceMesh.material
-          );
+        ? sourceMesh.material.map(prepareMichaelMaterial)
+        : prepareMichaelMaterial(sourceMesh.material);
 
     const skin =
       new THREE.SkinnedMesh(
@@ -2348,10 +1188,9 @@ function buildAutoRiggedThrillerSkin(
 
   rigRoot.updateMatrixWorld(true);
 
+  /* Inversas de bind calculadas com o esqueleto ainda na A-pose. */
   const michaelSkeleton =
-    new THREE.Skeleton(
-      [...canonicalBones]
-    );
+    new THREE.Skeleton(canonicalBones);
 
   michaelSkeleton.calculateInverses();
 
@@ -2363,7 +1202,7 @@ function buildAutoRiggedThrillerSkin(
     mesh.normalizeSkinWeights();
   }
 
-  /* Bind feito em A-pose; o template volta à T-pose que as animações esperam. */
+  /* Volta para a T-pose de repouso que o retarget espera. */
   for(const [bone, quaternion] of restQuaternions){
     bone.quaternion.copy(quaternion);
   }
@@ -2401,7 +1240,7 @@ function tryPrepareThrillerMichael(){
 
     /*
       Se algum arquivo futuro já vier com rig Mixamo, usamos diretamente.
-      O ZIP atual não possui rig, então cai no auto-rig acima.
+      O FBX atual não possui rig, então cai no auto-rig acima.
     */
     thrillerModels.p1 =
       hasMixamoRig(thrillerMichaelSource)

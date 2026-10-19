@@ -51,7 +51,14 @@ function getMenuIdleClipForDancer(dancer){
     return null;
   }
 
-  return dancer.menuIdleClip || menuIdleClip || dancer.idleAction?._clip || null;
+  const playerId =
+    dancer === dancers.p2 ? 'p2' : 'p1';
+
+  return (
+    getDancerMotionClip(dancer, playerId, 'menuIdle') ||
+    dancer.idleAction?._clip ||
+    null
+  );
 
 }
 
