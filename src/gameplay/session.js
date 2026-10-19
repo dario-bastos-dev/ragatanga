@@ -495,8 +495,11 @@ function startDefeatAnimation(
     dancers[loser?.id];
 
   const clip =
-    dancer?.defeatClip ||
-    defeatClip;
+    getDancerMotionClip(
+      dancer,
+      loser?.id,
+      'defeat'
+    );
 
   if(
     !dancer ||
@@ -554,8 +557,11 @@ function startVictoryAnimation(
     dancers[winner?.id];
 
   const clip =
-    dancer?.victoryClip ||
-    victoryClip;
+    getDancerMotionClip(
+      dancer,
+      winner?.id,
+      'victory'
+    );
 
   if(
     !dancer ||
@@ -628,20 +634,14 @@ function updateDefeatSequence(){
   const loserDancer =
     dancers[defeatSequence.loser?.id];
 
-  if(
-    loserDancer?.defeatAction &&
-    (loserDancer.defeatClip || defeatClip)
-  ){
+  if(loserDancer?.defeatAction){
     loserDancer.mixer.update(delta);
   }
 
   const winnerDancer =
     dancers[defeatSequence.winner?.id];
 
-  if(
-    winnerDancer?.victoryAction &&
-    (winnerDancer.victoryClip || victoryClip)
-  ){
+  if(winnerDancer?.victoryAction){
     winnerDancer.mixer.update(delta);
   }
 
