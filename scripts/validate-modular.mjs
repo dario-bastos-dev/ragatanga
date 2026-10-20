@@ -1,7 +1,8 @@
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = resolve(new URL('..', import.meta.url).pathname);
+const root = fileURLToPath(new URL('..', import.meta.url));
 const expected = [
   'src/main.js',
   'src/config/songs.js',
@@ -25,7 +26,11 @@ const expected = [
   'src/ui/hud.js',
   'src/ui/results.js',
   'src/ui/leaderboard.js',
-  'src/ui/controls.js'
+  'src/ui/controls.js',
+  'src/ui/intro.js',
+  'src/ui/menu-navigation.js',
+  'src/ui/intro-show.js',
+  'src/audio/intro-reactivity.js'
 ];
 
 const missing = expected.filter(path => !existsSync(resolve(root, path)));

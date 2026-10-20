@@ -1,4 +1,5 @@
 import '../core/state.js';
+import { resumeThemeAnalysis } from './intro-reactivity.js';
 
 function playMissSound(){
 
@@ -179,8 +180,14 @@ async function startMenuThemeMusic({ restart = false } = {}){
     if(restart || menuThemeSound.ended){
       menuThemeSound.currentTime = 0;
     }
-    menuThemeSound.volume = MENU_THEME_VOLUME;
+    menuThemeSound.volume = menuAudioSettings.theme;
+    resumeThemeAnalysis();
     await menuThemeSound.play();
+    // Uma prévia pode ter começado enquanto play() ainda estava pendente.
+    if(!isMenuThemeAllowed()){
+      menuThemeSound.pause();
+      return false;
+    }
     return true;
   }catch(error){
     return false;
@@ -225,7 +232,7 @@ function armMenuThemeAutoplayFallback(){
 async function initMenuThemeMusic(){
 
   menuThemeSound.currentTime = 0;
-  menuThemeSound.volume = MENU_THEME_VOLUME;
+  menuThemeSound.volume = menuAudioSettings.theme;
 
   const started = await startMenuThemeMusic({ restart: true });
 
@@ -265,7 +272,8 @@ async function startResultThemeMusic(){
   try{
     menuThemeSound.pause();
     menuThemeSound.currentTime = 0;
-    menuThemeSound.volume = MENU_THEME_VOLUME;
+    menuThemeSound.volume = menuAudioSettings.theme;
+    resumeThemeAnalysis();
     await menuThemeSound.play();
     return true;
   }catch(error){
@@ -374,7 +382,14 @@ function stopWastedSound(){
 }
 
 
+function updateMenuAudioVolumes(){
+  menuThemeSound.volume = menuAudioSettings.theme;
+  if(menuPreviewState.active) music.volume = menuAudioSettings.preview;
+}
+
 Object.assign(globalThis, {
+  getMenuThemeAudio: () => menuThemeSound,
+  updateMenuAudioVolumes,
   playMissSound,
   seekMusicTo,
   initMenuThemeMusic,

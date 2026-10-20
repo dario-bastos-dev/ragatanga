@@ -7,11 +7,12 @@ function updateModeButtons(){
 
   one.classList.toggle('selected', menuSelectedMode === 1);
   two.classList.toggle('selected', menuSelectedMode === 2);
+  one.setAttribute('aria-pressed', String(menuSelectedMode === 1));
+  two.setAttribute('aria-pressed', String(menuSelectedMode === 2));
 
   if(startGameButton){
-    startGameButton.textContent = menuSelectedMode === 2
-      ? 'INICIAR DANÇA · 2 JOGADORES'
-      : 'INICIAR DANÇA';
+    startGameButton.textContent = 'INICIAR PARTIDA';
+    startGameButton.setAttribute('aria-label', `Iniciar partida · ${menuSelectedMode} ${menuSelectedMode === 1 ? 'jogador' : 'jogadores'}`);
   }
 
 }
@@ -30,6 +31,9 @@ function updateMenuPreviewText(song){
 }
 
 function stopMenuPreview(){
+
+  menuPreviewRequest++;
+  menuPreviewState.pending = false;
 
   menuPreviewState.active = false;
   menuPreviewState.previewingSong = null;
@@ -182,7 +186,7 @@ function finishMenuPreview(){
     music.pause();
   }catch(error){}
 
-  music.volume = MENU_PREVIEW_VOLUME;
+  music.volume = menuAudioSettings.preview;
   document.querySelectorAll('.songCard').forEach(card => card.classList.remove('previewing'));
 
   const dancer = dancers.p1;
@@ -306,7 +310,7 @@ function updateStartButtonState(){
 
   updateModeButtons();
 
-  if(menu.style.display === 'none'){
+  if(menu.style.display === 'none' || !menuEntered){
     return;
   }
 
@@ -322,12 +326,18 @@ function updateStartButtonState(){
 
 async function startMenuPreview(){
 
-  if(!songChosenByUser || !canStartSelectedSong() || !scene || running || preRolling){
+  if(!menuEntered || !songChosenByUser || !canStartSelectedSong() || !scene || running || preRolling){
     return;
   }
 
   stopMenuThemeMusic(false);
   stopMenuPreview();
+  const request = menuPreviewRequest;
+  const songId = selectedSong;
+  // Reserva a prévia antes do seek: loadeddata e mudanças rápidas não a duplicam.
+  menuPreviewState.active = true;
+  menuPreviewState.pending = true;
+  menuPreviewState.previewingSong = songId;
   resetSceneDancers();
   ringP2.visible = false;
   ringP1.visible = true;
@@ -337,6 +347,9 @@ async function startMenuPreview(){
     createP1(MENU_CHARACTER_X);
   }catch(error){
     console.error('Não foi possível criar o preview do menu.', error);
+    menuPreviewState.active = false;
+    menuPreviewState.pending = false;
+    resumeMenuThemeMusic();
     return;
   }
 
@@ -352,11 +365,25 @@ async function startMenuPreview(){
     await seekMusicTo(AUDIO_START);
   }catch(error){}
 
-  music.volume = MENU_PREVIEW_VOLUME;
+  if(request !== menuPreviewRequest || songId !== selectedSong || running || preRolling || menu.style.display === 'none') return;
+
+  music.volume = menuAudioSettings.preview;
   music.loop = false;
-  music.play().catch(() => {});
+  try{
+    await music.play();
+  }catch(error){
+    if(request !== menuPreviewRequest) return;
+    menuPreviewState.active = false;
+    menuPreviewState.pending = false;
+    menuPreviewSubtitle.textContent = 'Clique na música para ouvir a prévia.';
+    setMenuIdlePose(dancer, 0);
+    resumeMenuThemeMusic();
+    return;
+  }
+  if(request !== menuPreviewRequest) return;
 
   menuPreviewState.active = true;
+  menuPreviewState.pending = false;
   menuPreviewState.startedAt = performance.now();
   menuPreviewState.lastAt = performance.now();
   menuPreviewState.previewingSong = selectedSong;
@@ -374,6 +401,8 @@ function updateMenuPreview(){
   if(menu.style.display === 'none' || running || preRolling){
     return;
   }
+
+  if(menuPreviewState.pending && menuPreviewState.active) return;
 
   const now = performance.now();
 
@@ -415,7 +444,7 @@ function updateMenuPreview(){
     }
 
     /* O áudio acompanha a saída da coreografia para evitar corte seco. */
-    music.volume = MENU_PREVIEW_VOLUME * Math.min(1, fadeOut * 1.35);
+    music.volume = menuAudioSettings.preview * Math.min(1, fadeOut * 1.35);
 
     if(elapsed >= MENU_PREVIEW_SECONDS || music.currentTime >= AUDIO_START + MENU_PREVIEW_SECONDS - .02){
       finishMenuPreview();
@@ -498,8 +527,7 @@ function initSongMenu(){
 
   selectSong(selectedSong);
 
-  document.querySelectorAll('.songCard').forEach(item => item.classList.remove('active'));
-  updateMenuPreviewText(null);
+  updateMenuPreviewText(SONGS[selectedSong]);
   updateModeButtons();
   showMenuCharacterWaiting();
   updateStartButtonState();
@@ -539,6 +567,8 @@ function selectSong(id){
           item.dataset.song === id
         )
     );
+
+  document.querySelectorAll('.songCard').forEach(item => item.setAttribute('aria-pressed', String(item.dataset.song === id)));
 
   document
     .querySelector('#progressStart')
@@ -593,6 +623,8 @@ function initDifficultyMenu(){
                     item === button
                   )
               );
+
+            document.querySelectorAll('.difficultyCard').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
 
             updateDifficultyInfo();
 
@@ -761,7 +793,16 @@ function updateMenuAvailability(){
 }
 
 
+function enterInitialMenu(){
+  if(menuEntered) return;
+  menuEntered = true;
+  songChosenByUser = true;
+  updateMenuPreviewText(SONGS[selectedSong]);
+  updateStartButtonState();
+}
+
 Object.assign(globalThis, {
+  enterInitialMenu,
   updateModeButtons,
   updateMenuPreviewText,
   stopMenuPreview,

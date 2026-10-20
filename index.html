@@ -6,8 +6,33 @@
   <title>You Dance</title>
   <link rel="icon" type="image/png" href="./assets/ui/you-dance-icon.png" />
   <link rel="stylesheet" href="/src/style.css" />
+  <link rel="stylesheet" href="/src/ui/menu.css" />
+  <link rel="stylesheet" href="/src/ui/intro.css" />
 </head>
-<body>
+<body class="intro-pending">
+
+<section id="introOverlay" class="introOverlay" aria-label="Boas-vindas ao You Dance" tabindex="-1">
+  <div class="introBackdrop" aria-hidden="true"></div>
+  <div class="introShow" aria-hidden="true">
+    <div class="introScenery">
+      <div class="introCone" style="--x:55;--y:352;--w:54;--h:59"></div>
+      <div class="introCone" style="--x:48;--y:435;--w:61;--h:77"></div>
+      <div class="introCone" style="--x:683;--y:401;--w:34;--h:38"></div>
+      <div class="introCone" style="--x:677;--y:459;--w:45;--h:46"></div>
+      <div class="introDisco"><span></span><i></i><i></i><i></i></div>
+      <div class="introBeam introBeamPink"></div><div class="introBeam introBeamBlue"></div>
+      <div class="introBeam introBeamViolet"></div><div class="introBeam introBeamCyan"></div>
+    </div>
+    <div class="introFloorGlow"></div><div class="introSparkles"></div>
+  </div>
+  <div class="introImpact" aria-hidden="true"></div>
+  <div class="introBrand">
+    <div class="introOrbit introOrbitCyan" aria-hidden="true"><span><svg viewBox="0 0 1000 400" preserveAspectRatio="none"><ellipse cx="500" cy="200" rx="498" ry="198" pathLength="100" /></svg></span></div>
+    <div class="introOrbit introOrbitPink" aria-hidden="true"><span><svg viewBox="0 0 1000 400" preserveAspectRatio="none"><ellipse cx="500" cy="200" rx="498" ry="198" pathLength="100" /></svg></span></div>
+    <img class="introLogo" src="./assets/ui/you-dance-logo-lateral.png" alt="YOU DANCE" fetchpriority="high" />
+  </div>
+  <button id="introStart" class="introStart" type="button">PRESSIONE <strong>ENTER</strong> PARA COMEÇAR</button>
+</section>
 
 <div id="game">
   <video
@@ -23,125 +48,68 @@
   ></video>
 </div>
 
-<div id="menuOverlay" class="overlay menuOverlayYd">
+<div id="menuOverlay" class="overlay menuOverlayYd redesignedMenu" inert aria-hidden="true">
+  <svg class="menuSymbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="icon-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13M9 8l12-2"/><ellipse cx="6" cy="18" rx="3" ry="2"/><ellipse cx="18" cy="16" rx="3" ry="2"/></symbol>
+    <symbol id="icon-players" viewBox="0 0 24 24"><circle cx="8" cy="7" r="4"/><circle cx="18" cy="8" r="3"/><path d="M1 22v-4a7 7 0 0 1 14 0v4ZM16 14a5 5 0 0 1 7 5v3h-6"/></symbol>
+    <symbol id="icon-settings" viewBox="0 0 24 24"><path d="m9 2-1 4-4 1-2 4 3 3-1 4 4 3 4-2 4 2 4-3-1-4 3-3-2-4-4-1-1-4Z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="icon-star" viewBox="0 0 24 24"><path d="m12 2 3 6 7 1-5 5 1 8-6-4-6 4 1-8-5-5 7-1Z"/></symbol>
+    <symbol id="icon-bars" viewBox="0 0 24 24"><path d="M3 21V12h3v9ZM10 21V4h3v17ZM17 21V8h3v13Z"/></symbol>
+    <symbol id="icon-gamepad" viewBox="0 0 24 24"><path d="M6 5h12l4 12q1 5-4 3l-4-4h-4l-4 4q-5 2-4-3Z"/><path d="M5 10h6M8 7v6M16 9h1M18 12h1"/></symbol>
+  </svg>
   <div class="menuShell">
-    <aside class="menuHeroPanel" aria-label="You Dance">
-      <span id="menuPreviewTitle" class="srOnly">SELECIONE UMA MÚSICA</span>
-      <span id="menuPreviewSubtitle" class="srOnly">Escolha uma música para ouvir e ver uma prévia da coreografia.</span>
+    <aside class="menuHeroPanel" aria-label="Palco You Dance">
+      <img src="./assets/ui/you-dance-logo-lateral.png" alt="You Dance" class="menuHeroLogo" />
+      <div class="menuPreviewCaption"><span id="menuPreviewTitle"></span><span id="menuPreviewSubtitle"></span></div>
     </aside>
-
-    <div class="menuCard glassMenuCard liquidGlass">
-      <div class="brandHeader">
-        <img src="./assets/ui/you-dance-logo-lateral.png" alt="You Dance" class="menuMainLogo" />
-        <div class="brandActions">
-          <button id="openLeaderboard" class="rankingOpenButton glassButton" type="button">
-            VER RANKING
-          </button>
+    <section class="menuCard" aria-label="Menu principal">
+      <nav class="menuTabs" aria-label="Seções do menu" role="tablist">
+        <button type="button" role="tab" id="tab-songs" aria-controls="panel-songs" aria-selected="true" tabindex="0" data-menu-tab="songs"><svg class="menuIcon" aria-hidden="true"><use href="#icon-music"></use></svg><span>MÚSICAS</span></button><button type="button" role="tab" id="tab-players" aria-controls="panel-players" aria-selected="false" tabindex="-1" data-menu-tab="players"><svg class="menuIcon" aria-hidden="true"><use href="#icon-players"></use></svg><span>JOGADORES</span></button><button type="button" role="tab" id="tab-settings" aria-controls="panel-settings" aria-selected="false" tabindex="-1" data-menu-tab="settings"><svg class="menuIcon" aria-hidden="true"><use href="#icon-settings"></use></svg><span>CONFIGURAÇÕES</span></button><button type="button" role="tab" id="tab-extras" aria-controls="panel-extras" aria-selected="false" tabindex="-1" data-menu-tab="extras"><svg class="menuIcon" aria-hidden="true"><use href="#icon-star"></use></svg><span>EXTRAS</span></button>
+      </nav>
+      <section id="panel-songs" role="tabpanel" aria-labelledby="tab-songs">
+        <div class="songCarousel">
+          <button type="button" class="songArrow songArrowPrev" aria-label="Música anterior">‹</button>
+          <div class="songGrid modernSongGrid">
+          <button class="songCard" data-song="thriller" type="button" aria-pressed="false"><img class="songCover" src="./assets/covers/thriller.png" alt="" /><span class="songInfo"><strong>THRILLER</strong><small>Michael Jackson</small><span class="menuDots" aria-hidden="true"><i class="lit"></i><i class="lit"></i><i class="lit"></i><i></i><i></i></span></span></button>
+<button class="songCard" data-song="ragatanga" type="button" aria-pressed="false"><img class="songCover" src="./assets/covers/ragatanga.png" alt="" /><span class="songInfo"><strong>RAGATANGA</strong><small>Rouge</small><span class="menuDots" aria-hidden="true"><i class="lit"></i><i class="lit"></i><i class="lit"></i><i></i><i></i></span></span></button>
+<button class="songCard" data-song="macarena" type="button" aria-pressed="false"><img class="songCover" src="./assets/covers/macarena.png" alt="" /><span class="songInfo"><strong>MACARENA</strong><small>Los del Río</small><span class="menuDots" aria-hidden="true"><i class="lit"></i><i class="lit"></i><i class="lit"></i><i></i><i></i></span></span></button>
+<button class="songCard" data-song="ymca" type="button" aria-pressed="false"><img class="songCover" src="./assets/covers/ymca.png" alt="" /><span class="songInfo"><strong>YMCA</strong><small>Village People</small><span class="menuDots" aria-hidden="true"><i class="lit"></i><i class="lit"></i><i class="lit"></i><i></i><i></i></span></span></button>
+          </div>
+          <button type="button" class="songArrow songArrowNext" aria-label="Próxima música">›</button>
+        </div>
+      </section>
+      <section id="panel-players" class="menuTabContent" role="tabpanel" aria-labelledby="tab-players" hidden>
+        <h2>SEU PALCO, SUAS REGRAS</h2><p>Escolha abaixo o modo de jogo. Cada jogador tem sua própria pontuação e julgamento.</p>
+        <div class="playerInstructions"><article><h3>JOGADOR 1</h3><p><kbd>A</kbd> <kbd>W</kbd> <kbd>S</kbd> <kbd>D</kbd></p><p>Especial no Extremo: <kbd>X</kbd></p></article><article><h3>JOGADOR 2</h3><p><kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd></p><p>Especial no Extremo: <kbd>Enter</kbd></p></article></div>
+      </section>
+      <section id="panel-settings" class="menuTabContent" role="tabpanel" aria-labelledby="tab-settings" hidden>
+        <h2>CONFIGURAÇÕES DE ÁUDIO</h2>
+        <label class="volumeSetting" for="menuThemeVolume">Música ambiente <output id="menuThemeVolumeValue">3%</output><input id="menuThemeVolume" type="range" min="0" max="100" value="3" /></label>
+        <label class="volumeSetting" for="menuPreviewVolume">Prévia musical <output id="menuPreviewVolumeValue">22%</output><input id="menuPreviewVolume" type="range" min="0" max="100" value="22" /></label>
+        <p>As prévias duram 10 segundos. O tema ambiente pausa durante a prévia e a partida.</p>
+      </section>
+      <section id="panel-extras" class="menuTabContent" role="tabpanel" aria-labelledby="tab-extras" hidden>
+        <h2>SEUS MELHORES PASSOS</h2><p>Confira o ranking das últimas 10 partidas. No multiplayer, cada jogador tem seu próprio registro.</p>
+        <button id="openLeaderboard" class="menuExtraButton" type="button"><svg class="menuIcon" aria-hidden="true"><use href="#icon-star"></use></svg> VER RANKING</button><p><kbd>Esc</kbd> pausa ou continua a partida. Acerte as notas quando chegarem aos receptores.</p>
+      </section>
+      <div class="menuDifficultySection">
+        <h2 class="menuSectionHeading"><svg class="menuIcon" aria-hidden="true"><use href="#icon-bars"></use></svg> DIFICULDADE</h2>
+        <div class="difficultyGrid modernDifficultyGrid">
+          <button class="difficultyCard selected" data-difficulty="easy" type="button" aria-pressed="true"><strong>FÁCIL</strong><span class="menuDots" aria-hidden="true"><i class="lit"></i><i></i><i></i><i></i><i></i></span></button><button class="difficultyCard" data-difficulty="normal" type="button" aria-pressed="false"><strong>NORMAL</strong><span class="menuDots" aria-hidden="true"><i class="lit"></i><i class="lit"></i><i class="lit"></i><i></i><i></i></span></button><button class="difficultyCard" data-difficulty="hard" type="button" aria-pressed="false"><strong>DIFÍCIL</strong><span class="menuDots" aria-hidden="true"><i class="lit"></i><i class="lit"></i><i class="lit"></i><i></i><i></i></span></button><button class="difficultyCard" data-difficulty="extreme" type="button" aria-pressed="false"><strong>EXTREMO</strong><span class="menuDots" aria-hidden="true"><i class="lit"></i><i class="lit"></i><i class="lit"></i><i></i><i></i></span></button>
+        </div>
+        <div id="difficultyInfo" class="menuDetail"></div>
+      </div>
+      <div class="menuModeSection">
+        <h2 class="menuSectionHeading"><svg class="menuIcon" aria-hidden="true"><use href="#icon-gamepad"></use></svg> MODO DE JOGO</h2>
+        <div class="modeGrid modernModeGrid">
+          <button class="modeBtn p1 selected" id="onePlayer" type="button" aria-pressed="true"><svg class="menuIcon" aria-hidden="true"><use href="#icon-players"></use></svg><span><strong>1 JOGADOR</strong><small>Dance e supere seus limites</small></span></button>
+          <button class="modeBtn p2" id="twoPlayers" type="button" aria-pressed="false"><svg class="menuIcon" aria-hidden="true"><use href="#icon-players"></use></svg><span><strong>2 JOGADORES</strong><small>Desafie um amigo</small></span></button>
         </div>
       </div>
-
-      <div class="menuSectionLabel">MODO DE JOGO</div>
-      <div class="modeGrid modernModeGrid">
-        <button class="modeBtn p1 selected" id="onePlayer" type="button">
-          <span class="modeIcon">👤</span>
-          <div>
-            <strong>UM JOGADOR</strong>
-            <span>A · W · S · D para dançar</span>
-          </div>
-        </button>
-
-        <button class="modeBtn p2" id="twoPlayers" type="button">
-          <span class="modeIcon">👥</span>
-          <div>
-            <strong>DOIS JOGADORES</strong>
-            <span>P1: A W S D &nbsp;&nbsp; P2: SETAS</span>
-          </div>
-        </button>
-      </div>
-
-      <div class="titleRow">
-        <div class="titlePill"><span class="titlePillIcon">♪</span> ESCOLHA A MÚSICA</div>
-      </div>
-
-      <div class="songGrid modernSongGrid">
-        <button class="songCard" data-song="ragatanga" type="button">
-          <span class="songBadge">DISPONÍVEL</span>
-          <strong>RAGATANGA</strong>
-          <small>Rouge</small>
-          <span class="songMeta">1:32 / 2:22</span>
-        </button>
-
-        <button class="songCard" data-song="thriller" type="button">
-          <span class="songBadge">DISPONÍVEL</span>
-          <strong>THRILLER</strong>
-          <small>Michael Jackson</small>
-          <span class="songMeta">1:37 / 2:27</span>
-        </button>
-
-        <button class="songCard" data-song="macarena" type="button">
-          <span class="songBadge">DISPONÍVEL</span>
-          <strong>MACARENA</strong>
-          <small>Los Del Rio</small>
-          <span class="songMeta">0:41 / 1:31</span>
-        </button>
-
-        <button class="songCard" data-song="ymca" type="button">
-          <span class="songBadge">DISPONÍVEL</span>
-          <strong>YMCA</strong>
-          <small>Village People</small>
-          <span class="songMeta">1:00 / 1:50</span>
-        </button>
-      </div>
-
-      <div class="titleRow difficultyTitleRow">
-        <div class="titlePill"><span class="titlePillIcon difficultyHeadingStar">★</span> DIFICULDADE</div>
-      </div>
-
-      <div class="difficultyGrid modernDifficultyGrid">
-        <button class="difficultyCard selected" data-difficulty="easy" type="button">
-          <div class="difficultyStars" aria-label="1 de 5 estrelas"><span class="star on">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span></div>
-          <strong>FÁCIL</strong>
-          <span>Menos hits</span>
-          <small>Lento</small>
-        </button>
-
-        <button class="difficultyCard" data-difficulty="normal" type="button">
-          <div class="difficultyStars" aria-label="2 de 5 estrelas"><span class="star on">★</span><span class="star on">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span></div>
-          <strong>NORMAL</strong>
-          <span>Hits intermediários</span>
-          <small>Velocidade normal</small>
-        </button>
-
-        <button class="difficultyCard" data-difficulty="hard" type="button">
-          <div class="difficultyStars" aria-label="3,5 de 5 estrelas"><span class="star on">★</span><span class="star on">★</span><span class="star on">★</span><span class="star half">★</span><span class="star">★</span></div>
-          <strong>DIFÍCIL</strong>
-          <span>Todas as batidas</span>
-          <small>Rápido</small>
-        </button>
-
-        <button class="difficultyCard extremeCard" data-difficulty="extreme" type="button">
-          <div class="difficultyStars" aria-label="5 de 5 estrelas"><span class="star on">★</span><span class="star on">★</span><span class="star on">★</span><span class="star on">★</span><span class="star on">★</span></div>
-          <strong>EXTREMO</strong>
-          <span>Todas as batidas + X</span>
-          <small>2x rápido</small>
-        </button>
-      </div>
-
-      <div id="difficultyInfo">
-        FÁCIL · aproximadamente 1/4 das batidas
-      </div>
-
-      <div id="menuStatus" class="liquidGlass statusGlass">Carregando personagem 3D…</div>
-
-      <div class="startRow">
-        <button id="startGameButton" class="startGameButton" type="button" disabled>
-          INICIAR DANÇA
-        </button>
-      </div>
-    </div>
+      <div class="menuFooter"><div id="menuStatus" role="status">Carregando personagem 3D…</div><div class="startRow"><button id="startGameButton" class="startGameButton" type="button" disabled>INICIAR PARTIDA</button></div></div>
+    </section>
   </div>
 </div>
-
 
 <div id="hud">
 

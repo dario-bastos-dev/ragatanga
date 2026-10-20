@@ -12,7 +12,12 @@ Object.assign(globalThis, {
   SONGS, DIFFICULTIES, STAGE_LOOKS, ...GameplayConfig
 });
 
-globalThis.selectedSong = 'ragatanga';
+globalThis.selectedSong = DEFAULT_SONG;
+
+globalThis.menuEntered = false;
+globalThis.menuPreviewRequest = 0;
+globalThis.sessionGeneration = 0;
+globalThis.menuAudioSettings = { theme: GameplayConfig.MENU_THEME_VOLUME, preview: GameplayConfig.MENU_PREVIEW_VOLUME };
 
 globalThis.songChosenByUser = false;
 

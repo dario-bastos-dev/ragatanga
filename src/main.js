@@ -20,8 +20,12 @@ import './gameplay/input.js';
 import './ui/menu.js';
 import './scene/stage.js';
 import { initControls } from './ui/controls.js';
+import { initIntro } from './ui/intro.js';
+import { initMenuNavigation } from './ui/menu-navigation.js';
 
 resultOverlay?.classList.add('hidden');
+initIntro();
+initMenuNavigation();
 
 initSongMenu();
 initDifficultyMenu();

@@ -51,4 +51,4 @@ export const SONGS = {
   }
 };
 
-export const DEFAULT_SONG = 'ragatanga';
+export const DEFAULT_SONG = 'thriller';

@@ -122,6 +122,9 @@ async function resumeGame(){
 
 function returnToMenu(){
 
+  // Invalida também inícios de partida que estejam aguardando seek/pré-roll.
+  sessionGeneration++;
+
   stopCrowdCelebrationSound();
   resetWastedOverlay();
 
@@ -136,23 +139,44 @@ function returnToMenu(){
 
   music.pause();
 
-  document.body
-    .classList.remove(
-      'game-paused'
-    );
-
-  /*
-    O menu inicial já monta todos os estados da partida corretamente.
-    Recarregar evita que notas/combos da partida interrompida vazem
-    para a próxima tentativa.
-  */
-  location.reload();
+  stopMenuThemeMusic(true);
+  stopMenuPreview();
+  defeatSequence = null;
+  completionSequence = null;
+  resultCelebrationSequence = null;
+  preRollElapsedAtPause = 0;
+  lastAnimationAt = 0;
+  players = {};
+  clearTimeout(countdown._hideTimer);
+  countdown.style.display = 'none';
+  countdown.classList.remove('pulse', 'dance');
+  hud.style.display = 'none';
+  for(const overlay of [pauseOverlay, defeatOverlay, completionOverlay, resultOverlay, leaderboardOverlay]){
+    overlay.classList.add('hidden');
+  }
+  document.querySelectorAll('.notesLayer').forEach(layer => layer.replaceChildren());
+  document.querySelectorAll('.judgement').forEach(label => { label.textContent = ''; });
+  document.body.classList.remove('game-paused', 'defeat-sequence', 'completion-celebration', 'screen-shake');
+  document.body.classList.add('menu-active');
+  menu.style.display = '';
+  menu.inert = false;
+  menu.removeAttribute('aria-hidden');
+  // Mantém música, dificuldade e modo. Uma nova prévia depende de novo clique.
+  showMenuCharacterWaiting();
+  menuPreviewState.previewingSong = selectedSong;
+  applyStageBackground(SONGS[selectedSong]);
+  applyStageLook(selectedSong);
+  updateMenuAvailability();
+  resumeMenuThemeMusic();
+  startGameButton.focus({ preventScroll: true });
 
 }
 
 async function startMode(
   selectedMode
 ){
+
+  const generation = ++sessionGeneration;
 
   stopCrowdCelebrationSound();
   stopMenuThemeMusic(true);
@@ -264,6 +288,7 @@ async function startMode(
 
   menu.style.display =
     'none';
+  document.body.classList.remove('menu-active');
 
   applyStageBackground(SONGS[selectedSong]);
 
@@ -275,8 +300,10 @@ async function startMode(
   music.volume = 1;
 
   await seekMusicTo(AUDIO_START);
+  if(generation !== sessionGeneration) return;
 
-  await startPreRoll();
+  await startPreRoll(generation);
+  if(generation !== sessionGeneration) return;
 
   /*
     O pré-roll usa um relógio visual separado. Antes de iniciar o áudio,
@@ -284,6 +311,7 @@ async function startMode(
     nota recue quando o relógio mestre muda para music.currentTime.
   */
   await seekMusicTo(AUDIO_START);
+  if(generation !== sessionGeneration) return;
 
   running = true;
   lastAnimationAt = performance.now();
@@ -298,7 +326,7 @@ async function startMode(
 
 }
 
-async function startPreRoll(){
+async function startPreRoll(generation = sessionGeneration){
 
   preRollDuration =
     PRE_ROLL_SECONDS;
@@ -326,6 +354,8 @@ async function startPreRoll(){
   startPreMatchAnimations();
 
   while(true){
+
+    if(generation !== sessionGeneration) return;
 
     if(gamePaused){
       await wait(35);
@@ -383,8 +413,10 @@ async function startPreRoll(){
   }
 
   while(gamePaused){
+    if(generation !== sessionGeneration) return;
     await wait(35);
   }
+  if(generation !== sessionGeneration) return;
 
   countdown.textContent =
     'DANCE!';

@@ -70,6 +70,12 @@ function applyStageBackground(song){
     return;
   }
 
+  if(document.body.classList.contains('menu-active')){
+    game.style.backgroundImage = 'none';
+    setStageBackgroundVideo(null);
+    return;
+  }
+
   /*
     Cada música controla seu próprio vídeo. A imagem estática fica como
     fallback atrás do vídeo enquanto ele carrega ou caso o browser não
@@ -1137,6 +1143,8 @@ function createRing(
 
 }
 
+let menuPortraitCamera;
+
 function render(){
 
   updateGame();
@@ -1144,6 +1152,23 @@ function render(){
   updateCompletionSequence();
   updateMenuPreview();
   updateResultCelebration();
+
+  // Em telas estreitas, enquadra a prévia na região do palco. A câmera da
+  // partida nunca é alterada; o viewport normal é restaurado a cada frame.
+  renderer.setViewport(0, 0, innerWidth, innerHeight);
+  if(document.body.classList.contains('menu-active') && (innerWidth <= 1000 || innerHeight <= 570)){
+    const hero = document.querySelector('.menuHeroPanel').getBoundingClientRect();
+    menuPortraitCamera ||= camera.clone();
+    const height = Math.max(1, hero.height - 100);
+    menuPortraitCamera.aspect = hero.width / height;
+    menuPortraitCamera.position.set(MENU_CHARACTER_X, 155, 430);
+    menuPortraitCamera.lookAt(MENU_CHARACTER_X, 105, 0);
+    menuPortraitCamera.updateProjectionMatrix();
+    renderer.setViewport(hero.x, innerHeight - hero.bottom, hero.width, height);
+    renderer.render(scene, menuPortraitCamera);
+    renderer.setViewport(0, 0, innerWidth, innerHeight);
+    return;
+  }
 
   renderer.render(
     scene,

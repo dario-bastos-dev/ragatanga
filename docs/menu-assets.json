@@ -1,0 +1,30 @@
+{
+  "tool": "built-in image_gen",
+  "reference": "menu-dance.jpeg, provided by the user",
+  "assets": [
+    {
+      "path": "public/assets/backgrounds/menu-club.png",
+      "prompt": "Use case: stylized-concept. Create a standalone 16:9 game menu BACKGROUND ASSET, no UI, no lettering, no logos, no people, no mannequin. A richly detailed modern nightclub dance stage: mirrored disco ball in the upper LEFT corner, steel lighting truss ceiling, magenta cyan violet and a few warm amber spotlights, tall black speaker stacks at the left wall, graffiti walls, polished reflective dance floor. Camera frontal, wide shot. The left 40% must contain the stage with empty space for an animated 3D dancer centered around x=20%, and an empty upper-left branding region. Right 60% should be dark navy atmospheric nightclub extending the same floor, low contrast so an actual HTML panel can overlay it. Floor horizon around 62% height. Saturated neon lighting, deep navy shadows, beautiful cyan pink and amber reflections, polished 3D game art, realistic materials. This is a background layer only, no graphical controls, no cards, no border, no words. Save the generated asset for use in the current You Dance project."
+    },
+    {
+      "path": "public/assets/covers/thriller.png",
+      "reference": "menu-dance.jpeg",
+      "prompt": "Use case: precise-object-edit. Extract/recreate ONLY the illustrated song cover artwork from the attached menu reference, first card at x=670..880,y=190..325, Michael Jackson style dancer in black hat and red jacket, dramatic orange red lighting, dancers in background. Output one standalone landscape 4:3 artwork asset for the thriller song card. Match the subjects, framing and colors of that exact cover in the reference as closely as possible, extending only to fill the landscape crop. No typography, no card frame, no UI, no dots, no logo, no menu background, no mannequin. This is the individual cover illustration, not the full menu."
+    },
+    {
+      "path": "public/assets/covers/ragatanga.png",
+      "reference": "menu-dance.jpeg",
+      "prompt": "Use case: precise-object-edit. Extract/recreate ONLY the illustrated song cover artwork from the attached menu reference, second card at x=905..1095,y=185..322, women performing synchronized pop dance in purple and pink stage lights. Output one standalone landscape 4:3 artwork asset for the ragatanga song card. Match the subjects, framing and colors of that exact cover in the reference as closely as possible, extending only to fill the landscape crop. No typography, no card frame, no UI, no dots, no logo, no menu background, no mannequin. This is the individual cover illustration, not the full menu."
+    },
+    {
+      "path": "public/assets/covers/macarena.png",
+      "reference": "menu-dance.jpeg",
+      "prompt": "Use case: precise-object-edit. Extract/recreate ONLY the illustrated song cover artwork from the attached menu reference, third card at x=1118..1312,y=180..317, women dancing Macarena in colorful summer clothing on a sunny beach with palm trees. Output one standalone landscape 4:3 artwork asset for the macarena song card. Match the subjects, framing and colors of that exact cover in the reference as closely as possible, extending only to fill the landscape crop. No typography, no card frame, no UI, no dots, no logo, no menu background, no mannequin. This is the individual cover illustration, not the full menu."
+    },
+    {
+      "path": "public/assets/covers/ymca.png",
+      "reference": "menu-dance.jpeg",
+      "prompt": "Use case: precise-object-edit. Extract/recreate ONLY the illustrated song cover artwork from the attached menu reference, fourth card at x=1338..1540,y=175..313, Village People style cowboy dancers in hats and western outfits dancing in a dusty warm outdoor town. Output one standalone landscape 4:3 artwork asset for the ymca song card. Match the subjects, framing and colors of that exact cover in the reference as closely as possible, extending only to fill the landscape crop. No typography, no card frame, no UI, no dots, no logo, no menu background, no mannequin. This is the individual cover illustration, not the full menu."
+    }
+  ]
+}
