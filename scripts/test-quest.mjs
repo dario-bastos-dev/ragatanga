@@ -46,3 +46,64 @@ test('gamepad dispara só na borda de pressionamento', () => {
   start[9] = true;
   assert.deepEqual(gamepadActions(start), ['pause']);
 });
+
+/*
+  Simula a Gamepad API: eventos de conexão, quadros de requestAnimationFrame e
+  a lista de getGamepads(). Cada teste importa uma instância nova do módulo.
+*/
+async function gamepadHarness(t){
+  const listeners = new Map();
+  const frames = [];
+  const presses = [];
+  const state = { pads: [] };
+  const install = (key, value) => {
+    const original = Object.getOwnPropertyDescriptor(globalThis, key);
+    Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
+    t.after(() => original ? Object.defineProperty(globalThis, key, original) : delete globalThis[key]);
+  };
+  install('addEventListener', (name, fn) => listeners.set(name, fn));
+  install('requestAnimationFrame', fn => frames.push(fn));
+  install('navigator', { getGamepads: () => state.pads });
+  install('pressPlayerLane', (player, lane) => presses.push([player, lane]));
+  install('togglePause', () => presses.push(['pause']));
+  const { initGamepadInput } = await import(`../src/gameplay/gamepad-input.js?instancia=${Math.random()}`);
+  initGamepadInput();
+  const pad = (...pressedButtons) => ({
+    index: 0,
+    connected: true,
+    mapping: 'standard',
+    buttons: Array.from({ length: 17 }, (_, i) => ({ pressed: pressedButtons.includes(i) }))
+  });
+  return {
+    presses,
+    state,
+    pad,
+    emit: (name, index = 0) => listeners.get(name)?.({ gamepad: { index } }),
+    frame(){ const fn = frames.shift(); fn?.(); return Boolean(fn); },
+    pendingFrames: () => frames.length
+  };
+}
+
+test('gamepad volta a responder depois de a lista ficar vazia por um instante', async t => {
+  const gp = await gamepadHarness(t);
+  gp.emit('gamepadconnected');
+  gp.state.pads = [];            // ex.: menu do sistema do Quest tirou o foco
+  gp.frame();
+  assert.equal(gp.pendingFrames(), 1, 'o polling deve continuar com o controle conectado');
+  gp.state.pads = [gp.pad(14)];  // direcional ← de volta
+  gp.frame();
+  assert.deepEqual(gp.presses, [['p1', 0]]);
+});
+
+test('polling para quando o último controle desconecta', async t => {
+  const gp = await gamepadHarness(t);
+  gp.emit('gamepadconnected');
+  gp.state.pads = [gp.pad()];
+  gp.frame();
+  gp.emit('gamepaddisconnected');
+  gp.state.pads = [];
+  gp.frame();
+  assert.equal(gp.pendingFrames(), 0);
+  gp.emit('gamepadconnected');
+  assert.equal(gp.pendingFrames(), 1, 'reconectar reinicia o polling');
+});

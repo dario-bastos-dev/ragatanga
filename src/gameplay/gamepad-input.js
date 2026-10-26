@@ -33,6 +33,7 @@ export function gamepadActions(pressed, previous = []){
 }
 
 const previousButtons = new Map();
+let connectedPads = 0;
 let polling = false;
 
 function readGamepads(){
@@ -45,15 +46,19 @@ function readGamepads(){
   }
 }
 
+/*
+  O laço segue os eventos de conexão, não a leitura: getGamepads() pode vir
+  vazio por alguns quadros (ex.: menu do sistema do Quest tira o foco) e o
+  gamepadconnected não dispara de novo para um controle que nunca saiu.
+*/
 function poll(){
-  const pads = readGamepads();
-  if(!pads.length){
+  if(connectedPads === 0){
     polling = false;
     previousButtons.clear();
     return;
   }
 
-  pads.forEach((pad, order) => {
+  readGamepads().forEach((pad, order) => {
     const pressed = pad.buttons.map(button => button.pressed);
     const actions = gamepadActions(pressed, previousButtons.get(pad.index));
     previousButtons.set(pad.index, pressed);
@@ -72,9 +77,14 @@ function poll(){
 
 export function initGamepadInput(){
   addEventListener('gamepadconnected', () => {
+    connectedPads++;
     if(polling) return;
     polling = true;
     requestAnimationFrame(poll);
+  });
+  addEventListener('gamepaddisconnected', event => {
+    connectedPads = Math.max(0, connectedPads - 1);
+    previousButtons.delete(event.gamepad.index);
   });
 }
 
