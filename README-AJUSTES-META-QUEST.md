@@ -4,7 +4,7 @@
 O jogo detecta o **Meta Quest Browser** pelos tokens estáveis do user-agent (`OculusBrowser` e `Quest 2` / `Quest 3` / `Quest Pro`) e liga o modo Quest com a classe `body.quest-browser`. Ele roda na janela 2D do navegador (1280 × 670 por padrão), já que todo o HUD (notas, receptores, placar) é DOM e não aparece numa sessão WebXR imersiva.
 
 - **Laser do controle ou pinça da mão:** aponte para a pista e aperte o gatilho. A coluna inteira da pista aceita o clique, e a pista sob o laser fica destacada. No Extremo, a 5ª pista é o especial.
-- **Controle Bluetooth (Xbox/PlayStation):** direcional ou `X Y A B` nas pistas (ordem ← ↑ ↓ →), `LB/RB/LT/RT` no especial e `Start` para pausar. O primeiro controle é o P1 e o segundo é o P2. Isso também funciona no desktop.
+- **Controle Bluetooth (Xbox/PlayStation):** direcional ou `X Y A B` nas pistas (ordem ← ↑ ↓ →), `LB/RB/LT/RT` no especial e `Start` para pausar. O primeiro controle é o P1 e o segundo é o P2; cada um mantém o jogador até desconectar, e quem conecta depois ocupa a vaga livre. Isso também funciona no desktop.
 - **Desempenho:** pixel ratio limitado a 1 e sombra PCF simples no lugar da PCFSoft.
 - **Interface:** os textos que citam teclado (Enter, Esc, dica das pistas) trocam por instruções de gatilho/laser. O menu fica compacto em janelas baixas para o botão INICIAR PARTIDA caber em 670 px. O botão de pausa fica maior.
 
@@ -31,7 +31,7 @@ Por http na rede local, o navegador pode bloquear a Gamepad API (contexto não s
 - 2 jogadores no mesmo headset: o P2 funciona por laser na pista vermelha ou por um segundo controle Bluetooth.
 
 ## Validação
-- `npm test`: 15/15 ✅
+- `npm test`: 17/17 ✅
 - `npm run check:architecture` ✅
 - `npm run test:quest` (Chrome headless, UA do Quest 3, 1280 × 670): detecção e INICIAR PARTIDA visível e clicável em todas as abas do menu ✅
 - Chrome headless com o UA do Quest 3 em 1280 × 670: detecção, intro, menu inteiro visível, cliques nas pistas viram entradas do P1, pausa ✅

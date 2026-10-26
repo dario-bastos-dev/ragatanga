@@ -68,8 +68,8 @@ async function gamepadHarness(t){
   install('togglePause', () => presses.push(['pause']));
   const { initGamepadInput } = await import(`../src/gameplay/gamepad-input.js?instancia=${Math.random()}`);
   initGamepadInput();
-  const pad = (...pressedButtons) => ({
-    index: 0,
+  const pad = (index, ...pressedButtons) => ({
+    index,
     connected: true,
     mapping: 'standard',
     buttons: Array.from({ length: 17 }, (_, i) => ({ pressed: pressedButtons.includes(i) }))
@@ -90,7 +90,7 @@ test('gamepad volta a responder depois de a lista ficar vazia por um instante', 
   gp.state.pads = [];            // ex.: menu do sistema do Quest tirou o foco
   gp.frame();
   assert.equal(gp.pendingFrames(), 1, 'o polling deve continuar com o controle conectado');
-  gp.state.pads = [gp.pad(14)];  // direcional ← de volta
+  gp.state.pads = [gp.pad(0, 14)];  // direcional ← de volta
   gp.frame();
   assert.deepEqual(gp.presses, [['p1', 0]]);
 });
@@ -98,7 +98,7 @@ test('gamepad volta a responder depois de a lista ficar vazia por um instante', 
 test('polling para quando o último controle desconecta', async t => {
   const gp = await gamepadHarness(t);
   gp.emit('gamepadconnected');
-  gp.state.pads = [gp.pad()];
+  gp.state.pads = [gp.pad(0)];
   gp.frame();
   gp.emit('gamepaddisconnected');
   gp.state.pads = [];
@@ -106,4 +106,37 @@ test('polling para quando o último controle desconecta', async t => {
   assert.equal(gp.pendingFrames(), 0);
   gp.emit('gamepadconnected');
   assert.equal(gp.pendingFrames(), 1, 'reconectar reinicia o polling');
+});
+
+test('cada controle mantém seu jogador quando o outro desconecta', async t => {
+  const gp = await gamepadHarness(t);
+  gp.emit('gamepadconnected', 0);
+  gp.emit('gamepadconnected', 1);
+  gp.state.pads = [gp.pad(0), gp.pad(1)];
+  gp.frame();
+  gp.state.pads = [gp.pad(0), gp.pad(1, 14)];
+  gp.frame();
+  assert.deepEqual(gp.presses, [['p2', 0]]);
+
+  gp.emit('gamepaddisconnected', 0);  // controle do P1 sai no meio da partida
+  gp.state.pads = [gp.pad(1)];
+  gp.frame();
+  gp.state.pads = [gp.pad(1, 12)];
+  gp.frame();
+  assert.deepEqual(gp.presses.at(-1), ['p2', 1], 'o controle do P2 não pode virar P1');
+
+  gp.emit('gamepadconnected', 2);     // quem chega depois ocupa a vaga livre
+  gp.state.pads = [gp.pad(1), gp.pad(2, 15)];
+  gp.frame();
+  assert.deepEqual(gp.presses.at(-1), ['p1', 3]);
+});
+
+test('terceiro controle não toca nas pistas, mas o Start dele pausa', async t => {
+  const gp = await gamepadHarness(t);
+  for(const index of [0, 1, 2]) gp.emit('gamepadconnected', index);
+  gp.state.pads = [gp.pad(0), gp.pad(1), gp.pad(2)];
+  gp.frame();
+  gp.state.pads = [gp.pad(0), gp.pad(1), gp.pad(2, 14, 9)];
+  gp.frame();
+  assert.deepEqual(gp.presses, [['pause']]);
 });
