@@ -31,7 +31,7 @@ Por http na rede local, o navegador pode bloquear a Gamepad API (contexto não s
 - 2 jogadores no mesmo headset: o P2 funciona por laser na pista vermelha ou por um segundo controle Bluetooth.
 
 ## Validação
-- `npm test`: 18/18 ✅
+- `npm test`: 22/22 ✅ (inclui as proteções de `pressPlayerLane`, compartilhada por teclado, laser e gamepad)
 - `npm run check:architecture` ✅
 - `npm run test:quest` (Chrome headless, UA do Quest 3, 1280 × 670): detecção e INICIAR PARTIDA visível e clicável em todas as abas do menu ✅
 - Chrome headless com o UA do Quest 3 em 1280 × 670: detecção, intro, menu inteiro visível, cliques nas pistas viram entradas do P1, pausa ✅

@@ -8,6 +8,13 @@ const QUEST_3 = 'Mozilla/5.0 (X11; Linux x86_64; Quest 3) AppleWebKit/537.36 (KH
 const QUEST_2_MOBILE = 'Mozilla/5.0 (Linux; Android 12; Quest 2) AppleWebKit/537.36 (KHTML, like Gecko) OculusBrowser/33.0.0.0 SamsungBrowser/4.0 Chrome/126.0.0.0 Mobile VR Safari/537.36';
 const DESKTOP = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36';
 
+/* Substitui um global durante o teste e restaura o original no fim. */
+function installGlobal(t, key, value){
+  const original = Object.getOwnPropertyDescriptor(globalThis, key);
+  Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
+  t.after(() => original ? Object.defineProperty(globalThis, key, original) : delete globalThis[key]);
+}
+
 test('detecta o Quest Browser pelo user-agent, inclusive no modo mobile', () => {
   assert.equal(detectQuest({ userAgent: QUEST_3, search: '' }), true);
   assert.equal(detectQuest({ userAgent: QUEST_2_MOBILE, search: '' }), true);
@@ -61,11 +68,7 @@ async function gamepadHarness(t){
   const frames = [];
   const presses = [];
   const state = { pads: [] };
-  const install = (key, value) => {
-    const original = Object.getOwnPropertyDescriptor(globalThis, key);
-    Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
-    t.after(() => original ? Object.defineProperty(globalThis, key, original) : delete globalThis[key]);
-  };
+  const install = (key, value) => installGlobal(t, key, value);
   install('addEventListener', (name, fn) => listeners.set(name, fn));
   install('requestAnimationFrame', fn => frames.push(fn));
   install('navigator', { getGamepads: () => state.pads });
@@ -144,4 +147,70 @@ test('terceiro controle não toca nas pistas, mas o Start dele pausa', async t =
   gp.state.pads = [gp.pad(0), gp.pad(1), gp.pad(2, 14, 9)];
   gp.frame();
   assert.deepEqual(gp.presses, [['pause']]);
+});
+
+/*
+  pressPlayerLane é a entrada comum de teclado, laser e gamepad. O state.js
+  importado por input.js só precisa de Audio e document.querySelector no Node.
+*/
+async function inputHarness(t, { mode = 2, difficulty = 'easy', running = true, paused = false } = {}){
+  installGlobal(t, 'Audio', class { constructor(src){ this.src = src; } });
+  installGlobal(t, 'document', { querySelector: () => ({}) });
+  const input = await import('../src/gameplay/input.js');
+  const calls = [];
+  installGlobal(t, 'handleInput', (player, key) => calls.push([player.id, key]));
+  installGlobal(t, 'handleSpecialInput', (player, key) => calls.push([player.id, 'especial', key]));
+  installGlobal(t, 'pauseGame', () => calls.push(['pauseGame']));
+  installGlobal(t, 'resumeGame', () => calls.push(['resumeGame']));
+  installGlobal(t, 'players', { p1: { id: 'p1' }, p2: { id: 'p2' } });
+  installGlobal(t, 'mode', mode);
+  installGlobal(t, 'selectedDifficulty', difficulty);
+  installGlobal(t, 'running', running);
+  installGlobal(t, 'gamePaused', paused);
+  return { ...input, calls };
+}
+
+test('pressPlayerLane converte a pista na tecla de cada jogador', async t => {
+  const { pressPlayerLane, calls } = await inputHarness(t);
+  for(const lane of [0, 1, 2, 3]) pressPlayerLane('p1', lane);
+  for(const lane of [0, 1, 2, 3]) pressPlayerLane('p2', lane);
+  assert.deepEqual(calls, [
+    ['p1', 'A'], ['p1', 'W'], ['p1', 'S'], ['p1', 'D'],
+    ['p2', 'ArrowLeft'], ['p2', 'ArrowUp'], ['p2', 'ArrowDown'], ['p2', 'ArrowRight']
+  ]);
+});
+
+test('especial só no Extremo: X para o P1 e Enter para o P2', async t => {
+  const extreme = await inputHarness(t, { difficulty: 'extreme' });
+  extreme.pressPlayerLane('p1', 'special');
+  extreme.pressPlayerLane('p2', 'special');
+  assert.deepEqual(extreme.calls, [['p1', 'especial', 'X'], ['p2', 'especial', 'Enter']]);
+  extreme.calls.length = 0;
+  globalThis.selectedDifficulty = 'hard';
+  extreme.pressPlayerLane('p1', 'special');
+  assert.deepEqual(extreme.calls, []);
+});
+
+test('pressPlayerLane ignora P2 no modo 1 jogador e entradas fora da partida', async t => {
+  const { pressPlayerLane, calls } = await inputHarness(t, { mode: 1 });
+  pressPlayerLane('p2', 0);
+  assert.deepEqual(calls, [], 'P2 no modo 1 jogador');
+  pressPlayerLane('p1', 0);
+  assert.deepEqual(calls, [['p1', 'A']]);
+  calls.length = 0;
+  globalThis.gamePaused = true;
+  pressPlayerLane('p1', 0);
+  assert.deepEqual(calls, [], 'partida pausada');
+  globalThis.gamePaused = false;
+  globalThis.running = false;
+  pressPlayerLane('p1', 0);
+  assert.deepEqual(calls, [], 'fora da partida');
+});
+
+test('togglePause pausa ou continua conforme o estado', async t => {
+  const { togglePause, calls } = await inputHarness(t);
+  togglePause();
+  globalThis.gamePaused = true;
+  togglePause();
+  assert.deepEqual(calls, [['pauseGame'], ['resumeGame']]);
 });
