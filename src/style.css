@@ -2830,3 +2830,44 @@ body.wasted-reveal .wastedWord{
   50%{transform:translate(2px,-1px) rotate(45deg) scale(1.08)}
   75%{transform:translate(-1px,-1px) rotate(45deg) scale(1.13)}
 }
+
+/* =========================================================
+   META QUEST (body.quest-browser, ver src/platform/quest.js)
+   ========================================================= */
+
+body:not(.quest-browser) .quest-only,
+body.quest-browser .keyboard-only{
+  display:none!important
+}
+
+/*
+  O laser do controle/mão clica na coluna inteira da pista. Notas e
+  receptores deixam o evento passar para a .lane, que mostra onde se mira.
+*/
+body.quest-browser .lanes{
+  pointer-events:auto;
+  touch-action:none;
+  user-select:none;
+  -webkit-user-select:none;
+  cursor:pointer
+}
+
+body.quest-browser .notesLayer,
+body.quest-browser .receptors{
+  pointer-events:none
+}
+
+body.quest-browser .lane{
+  transition:background .08s ease,border-color .08s ease
+}
+
+body.quest-browser .lane:hover{
+  border-color:rgba(255,255,255,.28);
+  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.16))
+}
+
+/* Alvos maiores para o laser. */
+body.quest-browser .pauseButton{
+  width:60px;
+  height:60px
+}

@@ -121,4 +121,19 @@ body.menu-active #stageBackgroundVideo{visibility:hidden;opacity:0}
   #menuOverlay.redesignedMenu .startGameButton{min-height:70px!important;font-size:21px!important}
   #menuOverlay.redesignedMenu .menuTabContent{min-height:300px}
 }
+/* Meta Quest: a janela padrão do navegador tem 1280 × 670; compacta espaçamentos para o INICIAR caber. */
+@media(max-height:760px) and (min-width:1001px){
+  body.quest-browser #menuOverlay.redesignedMenu .menuTabs{min-height:56px;margin-bottom:12px}
+  body.quest-browser #menuOverlay.redesignedMenu [role=tabpanel]{margin-bottom:10px}
+  body.quest-browser #menuOverlay.redesignedMenu .songInfo{padding:8px 12px 10px}
+  body.quest-browser #menuOverlay.redesignedMenu .menuDots{margin-top:8px}
+  body.quest-browser #menuOverlay.redesignedMenu .menuDifficultySection{padding-top:8px;margin-bottom:6px}
+  body.quest-browser #menuOverlay.redesignedMenu .menuSectionHeading{margin-bottom:6px}
+  body.quest-browser #menuOverlay.redesignedMenu .difficultyCard{min-height:50px!important;padding:8px 5px!important}
+  body.quest-browser #menuOverlay.redesignedMenu .difficultyCard .menuDots{margin-top:8px}
+  body.quest-browser #menuOverlay.redesignedMenu .menuModeSection{padding-top:8px}
+  body.quest-browser #menuOverlay.redesignedMenu .modeBtn{min-height:54px!important;padding:8px 16px!important}
+  body.quest-browser #menuOverlay.redesignedMenu .menuFooter{margin-top:10px;min-height:0}
+  body.quest-browser #menuOverlay.redesignedMenu .startGameButton{min-height:58px!important;padding:10px 12px!important}
+}
 @media(prefers-reduced-motion:reduce){#menuOverlay.redesignedMenu *{animation:none!important;transition:none!important}}

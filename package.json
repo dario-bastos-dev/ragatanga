@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:quest": "vite --host",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test scripts/test-intro.mjs scripts/test-intro-audio.mjs",
+    "test": "node --test scripts/test-intro.mjs scripts/test-intro-audio.mjs scripts/test-quest.mjs",
     "test:menu": "node scripts/test-menu-browser.mjs",
     "check:architecture": "node scripts/validate-modular.mjs"
   },

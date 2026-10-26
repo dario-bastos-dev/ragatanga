@@ -30,7 +30,10 @@ const expected = [
   'src/ui/intro.js',
   'src/ui/menu-navigation.js',
   'src/ui/intro-show.js',
-  'src/audio/intro-reactivity.js'
+  'src/audio/intro-reactivity.js',
+  'src/platform/quest.js',
+  'src/gameplay/pointer-input.js',
+  'src/gameplay/gamepad-input.js'
 ];
 
 const missing = expected.filter(path => !existsSync(resolve(root, path)));

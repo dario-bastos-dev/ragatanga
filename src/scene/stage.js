@@ -739,10 +739,14 @@ function init3D(){
     0
   );
 
+  /* No Meta Quest o perfil reduz pixel ratio e sombra (ver platform/quest.js). */
+  const renderProfile =
+    getRenderProfile();
+
   renderer.setPixelRatio(
     Math.min(
       devicePixelRatio,
-      2
+      renderProfile.maxPixelRatio
     )
   );
 
@@ -755,7 +759,9 @@ function init3D(){
     true;
 
   renderer.shadowMap.type =
-    THREE.PCFSoftShadowMap;
+    renderProfile.softShadows
+      ? THREE.PCFSoftShadowMap
+      : THREE.PCFShadowMap;
 
   renderer.outputColorSpace =
     THREE.SRGBColorSpace;

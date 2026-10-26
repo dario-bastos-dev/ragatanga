@@ -1,5 +1,62 @@
 import '../core/state.js';
 
+/*
+  Ponto único de entrada da partida: teclado, ponteiro (Meta Quest) e
+  gamepad chamam estas funções, então as regras ficam iguais para todos.
+*/
+export function togglePause(){
+  if(gamePaused){
+    resumeGame();
+  }else{
+    pauseGame();
+  }
+}
+
+/* `lane` é o índice 0–3 da pista ou 'special' (X / Enter no Extremo). */
+export function pressPlayerLane(
+  playerId,
+  lane
+){
+
+  if(
+    gamePaused ||
+    !running ||
+    (playerId === 'p2' && mode !== 2)
+  ){
+    return;
+  }
+
+  const player =
+    players[playerId];
+
+  if(lane === 'special'){
+
+    if(
+      DIFFICULTIES[selectedDifficulty].special
+    ){
+      handleSpecialInput(
+        player,
+        playerId === 'p1'
+          ? 'X'
+          : 'Enter'
+      );
+    }
+
+    return;
+
+  }
+
+  handleInput(
+    player,
+    (
+      playerId === 'p1'
+        ? P1_KEYS
+        : P2_KEYS
+    )[lane]
+  );
+
+}
+
 export function initInput(){
   addEventListener(
     'keydown',
@@ -9,11 +66,7 @@ export function initInput(){
 
         event.preventDefault();
 
-        if(gamePaused){
-          resumeGame();
-        }else{
-          pauseGame();
-        }
+        togglePause();
 
         return;
 
@@ -38,9 +91,9 @@ export function initInput(){
           upper === 'X'
         ){
 
-          handleSpecialInput(
-            players.p1,
-            'X'
+          pressPlayerLane(
+            'p1',
+            'special'
           );
 
           return;
@@ -54,9 +107,9 @@ export function initInput(){
 
           event.preventDefault();
 
-          handleSpecialInput(
-            players.p2,
-            'Enter'
+          pressPlayerLane(
+            'p2',
+            'special'
           );
 
           return;
@@ -71,9 +124,9 @@ export function initInput(){
         )
       ){
 
-        handleInput(
-          players.p1,
-          upper
+        pressPlayerLane(
+          'p1',
+          P1_KEYS.indexOf(upper)
         );
 
       }
@@ -87,9 +140,9 @@ export function initInput(){
 
         event.preventDefault();
 
-        handleInput(
-          players.p2,
-          event.key
+        pressPlayerLane(
+          'p2',
+          P2_KEYS.indexOf(event.key)
         );
 
       }
@@ -98,4 +151,8 @@ export function initInput(){
   );
 }
 
-globalThis.initInput = initInput;
+Object.assign(globalThis, {
+  initInput,
+  togglePause,
+  pressPlayerLane
+});

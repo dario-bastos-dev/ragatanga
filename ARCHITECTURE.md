@@ -35,6 +35,9 @@ Chart, jogadores, inputs, julgamento, miss streak, performance, ciclo da partida
 ### `ui/`
 Menu, controles, HUD, ranking e resultado. UI não contém configuração de músicas/dificuldades.
 
+### `platform/`
+Detecção do dispositivo (Meta Quest Browser) e perfil de renderização. A UI reage à classe `body.quest-browser`; a entrada por laser/gamepad fica em `gameplay/` e usa `pressPlayerLane`, como o teclado.
+
 ## Dependências
 
 A v2.17 evita duplicação de estado. O estado mutável compartilhado é inicializado em `core/state.js` e os módulos de domínio operam sobre a mesma sessão. Essa escolha mantém compatibilidade 1:1 com a v2.16 e prepara o código para o PR, onde a camada pode ser gradualmente convertida para imports/exportações explícitas sem reescrever regras de gameplay.

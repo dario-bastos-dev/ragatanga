@@ -31,7 +31,7 @@
     <div class="introOrbit introOrbitPink" aria-hidden="true"><span><svg viewBox="0 0 1000 400" preserveAspectRatio="none"><ellipse cx="500" cy="200" rx="498" ry="198" pathLength="100" /></svg></span></div>
     <img class="introLogo" src="./assets/ui/you-dance-logo-lateral.png" alt="YOU DANCE" fetchpriority="high" />
   </div>
-  <button id="introStart" class="introStart" type="button">PRESSIONE <strong>ENTER</strong> PARA COMEÇAR</button>
+  <button id="introStart" class="introStart" type="button"><span class="keyboard-only">PRESSIONE <strong>ENTER</strong> PARA COMEÇAR</span><span class="quest-only">APERTE O <strong>GATILHO</strong> PARA COMEÇAR</span></button>
 </section>
 
 <div id="game">
@@ -81,6 +81,7 @@
       <section id="panel-players" class="menuTabContent" role="tabpanel" aria-labelledby="tab-players" hidden>
         <h2>SEU PALCO, SUAS REGRAS</h2><p>Escolha abaixo o modo de jogo. Cada jogador tem sua própria pontuação e julgamento.</p>
         <div class="playerInstructions"><article><h3>JOGADOR 1</h3><p><kbd>A</kbd> <kbd>W</kbd> <kbd>S</kbd> <kbd>D</kbd></p><p>Especial no Extremo: <kbd>X</kbd></p></article><article><h3>JOGADOR 2</h3><p><kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd></p><p>Especial no Extremo: <kbd>Enter</kbd></p></article></div>
+        <p class="quest-only">No Meta Quest, aponte o controle (ou a mão) para a pista e aperte o gatilho (ou faça a pinça). A 5ª pista é o especial. Com controle Bluetooth: direcional ou <kbd>X</kbd> <kbd>Y</kbd> <kbd>A</kbd> <kbd>B</kbd> nas pistas, gatilhos no especial e <kbd>Start</kbd> pausa.</p>
       </section>
       <section id="panel-settings" class="menuTabContent" role="tabpanel" aria-labelledby="tab-settings" hidden>
         <h2>CONFIGURAÇÕES DE ÁUDIO</h2>
@@ -90,7 +91,7 @@
       </section>
       <section id="panel-extras" class="menuTabContent" role="tabpanel" aria-labelledby="tab-extras" hidden>
         <h2>SEUS MELHORES PASSOS</h2><p>Confira o ranking das últimas 10 partidas. No multiplayer, cada jogador tem seu próprio registro.</p>
-        <button id="openLeaderboard" class="menuExtraButton" type="button"><svg class="menuIcon" aria-hidden="true"><use href="#icon-star"></use></svg> VER RANKING</button><p><kbd>Esc</kbd> pausa ou continua a partida. Acerte as notas quando chegarem aos receptores.</p>
+        <button id="openLeaderboard" class="menuExtraButton" type="button"><svg class="menuIcon" aria-hidden="true"><use href="#icon-star"></use></svg> VER RANKING</button><p class="keyboard-only"><kbd>Esc</kbd> pausa ou continua a partida. Acerte as notas quando chegarem aos receptores.</p><p class="quest-only">O botão de pausa fica no canto superior esquerdo. Acerte as notas quando chegarem aos receptores.</p>
       </section>
       <div class="menuDifficultySection">
         <h2 class="menuSectionHeading"><svg class="menuIcon" aria-hidden="true"><use href="#icon-bars"></use></svg> DIFICULDADE</h2>
@@ -205,7 +206,8 @@
     </div>
 
 
-    <div class="hint">Acerte quando a nota encaixar.</div>
+    <div class="hint keyboard-only">Acerte quando a nota encaixar.</div>
+    <div class="hint quest-only">Aponte para a pista e aperte o gatilho.</div>
   </section>
 
   <section id="boardP2" class="rhythmBoard redBoard">
@@ -251,7 +253,8 @@
       </div>
     </div>
 
-    <div class="hint">Acerte quando a nota encaixar.</div>
+    <div class="hint keyboard-only">Acerte quando a nota encaixar.</div>
+    <div class="hint quest-only">Aponte para a pista e aperte o gatilho.</div>
   </section>
 
   <div id="judgeP1" class="judgement"></div>
@@ -274,7 +277,8 @@
   <div class="pauseCard">
     <div class="eyebrow">PARTIDA PAUSADA</div>
     <h1 id="pauseTitle">PAUSA</h1>
-    <p>A partida está pausada. Pressione <b>Esc</b> ou escolha uma opção abaixo.</p>
+    <p class="keyboard-only">A partida está pausada. Pressione <b>Esc</b> ou escolha uma opção abaixo.</p>
+    <p class="quest-only">A partida está pausada. Escolha uma opção abaixo.</p>
 
     <div class="pauseActions">
       <button id="continueGame" class="continueButton" type="button">
