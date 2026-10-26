@@ -14,6 +14,11 @@ test('detecta o Quest Browser pelo user-agent, inclusive no modo mobile', () => 
   assert.equal(detectQuest({ userAgent: DESKTOP, search: '' }), false);
 });
 
+test('a palavra "Quest" sem o token OculusBrowser não liga o modo Quest', () => {
+  const webviewDesktop = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Quest/2.1';
+  assert.equal(detectQuest({ userAgent: webviewDesktop, search: '' }), false);
+});
+
 test('?quest=1 e ?quest=0 forçam o modo para testes', () => {
   assert.equal(detectQuest({ userAgent: DESKTOP, search: '?quest=1' }), true);
   assert.equal(detectQuest({ userAgent: QUEST_3, search: '?quest=0' }), false);

@@ -5,12 +5,13 @@
   não tem teclado: os controles Touch e as mãos viram um laser que dispara
   eventos de ponteiro. A Meta recomenda checar APIs em vez do user-agent para
   *recursos*, mas aqui o objetivo é adaptar a modalidade de entrada e o custo
-  de renderização ao aparelho, então os tokens estáveis do UA são o sinal certo
-  ("OculusBrowser" e "Quest 2" / "Quest 3" / "Quest Pro").
+  de renderização ao aparelho, então o token estável do UA é o sinal certo.
+  "OculusBrowser" aparece nos modos desktop e mobile; "Quest 2" / "Quest 3" /
+  "Quest Pro" só identificam o modelo e casariam com outros UAs com "Quest".
 
   `?quest=1` força o modo Quest no desktop (testes); `?quest=0` desliga.
 */
-const QUEST_USER_AGENT = /OculusBrowser|\bQuest\b/i;
+const QUEST_USER_AGENT = /\bOculusBrowser\//;
 
 export function detectQuest({
   userAgent = globalThis.navigator?.userAgent ?? '',
