@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test": "node --test scripts/test-intro.mjs scripts/test-intro-audio.mjs scripts/test-quest.mjs",
     "test:menu": "node scripts/test-menu-browser.mjs",
+    "test:quest": "node scripts/test-quest-browser.mjs",
     "check:architecture": "node scripts/validate-modular.mjs"
   },
   "dependencies": {

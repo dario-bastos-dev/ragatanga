@@ -33,5 +33,6 @@ Por http na rede local, o navegador pode bloquear a Gamepad API (contexto não s
 ## Validação
 - `npm test`: 13/13 ✅
 - `npm run check:architecture` ✅
+- `npm run test:quest` (Chrome headless, UA do Quest 3, 1280 × 670): detecção e INICIAR PARTIDA visível e clicável em todas as abas do menu ✅
 - Chrome headless com o UA do Quest 3 em 1280 × 670: detecção, intro, menu inteiro visível, cliques nas pistas viram entradas do P1, pausa ✅
 - Mesmo fluxo com `?quest=0`: layout e comportamento do desktop inalterados ✅
